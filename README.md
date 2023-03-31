@@ -5,7 +5,7 @@ This is the repository of our implementation of the SCCG algorithm explained in 
 
 This project is part of the [Bioinformatics 1](https://www.fer.unizg.hr/en/course/enbio1) course at FER, Universitiy of Zagreb. 
 
-Done by [Martin Bakač](mbakac.from.hr) and Marta Bonacin under the supervision of [izv. prof. dr. sc. Mirjana Domazet-Lošo](https://www.fer.unizg.hr/en/mirjana.domazet-loso).
+Done by [Martin Bakač](https://www.martinbakac.from.hr/) and Marta Bonacin under the supervision of [izv. prof. dr. sc. Mirjana Domazet-Lošo](https://www.fer.unizg.hr/en/mirjana.domazet-loso).
 
 ## Idea
 
