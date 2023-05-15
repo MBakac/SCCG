@@ -6,7 +6,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <utility>
 
+#define ll long long 
 
 /**
  * Function turns input FASTA file into string
@@ -166,13 +168,58 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     */
 }
 
-std::vector<std::string> localMatching(
+
+// file entry
+class Entry {
+    int position, length;
+    std::string sequence;
+
+    int type; // 0 for (p, l) pair, 1 for sequence string
+  
+  public:
+    Entry(std::string s) {
+        sequence = s;
+        type = 1;
+    }
+
+    Entry(int p, int l) {
+        position = p;
+        length = l;
+        type = 0;
+    }
+
+    int getType() {return type;}
+    
+    int getPosition() {
+        if (type == 0)
+            return position;
+        else
+            return 0;
+    }
+
+    int getLength() {
+        if (type == 0)
+            return length;
+        else
+            return 0; 
+    }
+
+    std::string getSequence() {
+        if (type == 1)
+            return sequence;
+        else
+            return "";
+    }
+};
+
+std::vector<Entry> localMatching(
     std::string segment,
     std::string referenceSegment, 
     std::map<std::size_t, std::vector<int>> hashTable, 
     int k
 ) {
-    std::vector<std::string> out;
+    // positions are marked as paris of integers p for position and l for length
+    std::vector<Entry> out;
 
     for (int i = 0; i < segment.length() - k + 1; i++) {
         std::string kmer = segment.substr(i, k);
@@ -184,7 +231,9 @@ std::vector<std::string> localMatching(
             if (segment.length() - i < k) {
                 break;
             }
-            out.push_back(segment.substr(i, 1));
+
+            Entry e(segment.substr(i, 1));
+            out.push_back(e);
         } else {
             std::vector<int> list = hashTable[hash];
 
@@ -203,11 +252,13 @@ std::vector<std::string> localMatching(
                     maxLengthIndex = j;
                 }
             }
-
-            //std::cout << "ml: " << maxLength << " i: " << i << "res: " << maxLength + k - i << std::endl;
-            out.push_back(std::to_string(list[maxLengthIndex]) + "," + std::to_string(maxLength + k - 2));
+ 
+            Entry positions(list[maxLengthIndex], maxLength + k - 2);
+            out.push_back(positions);
             i += maxLength + k - 1;
-            out.push_back(segment.substr(i, 1));
+
+            Entry e(segment.substr(i, 1));
+            out.push_back(e);
         }
     }
 
@@ -277,16 +328,35 @@ int main( int argc, char **argv){
             referenceSequence += rSequence[i];
     }
 
-    std::map<std::size_t, std::vector<int>> testMap = generateHashTable(referenceSequence.substr(0, 30000), 21);
-    std::vector<std::string> s = localMatching(targetSequence.substr(0, 30000), referenceSequence.substr(0, 30000), testMap, 21);
+    std::string refSegment = referenceSequence.substr(0, 30000);
+    std::string tarSegment = targetSequence.substr(0, 30000);
 
-    for (auto a : s) {
-        if (isdigit(a[0]))
-            std::cout << std::endl;    
-        std::cout << a;
-        if (isdigit(a[0]))
-            std::cout << std::endl;    
+    std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
+    std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
+
+    // write characters before first match
+
+    for (int i = 0; i < matches.size(); i++) {
+        Entry match = matches[i];
+        int delta = 0;
+
+        if (i >= 1) {
+            for (int j = i - 1; j > 0; j--) {
+                if (matches[j].getType() == 0) {
+                    delta = matches[j].getLength() + matches[j].getPosition();
+                    break;
+                }
+            }
+        }
+
+        if (match.getType() == 0) {
+            std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
+        } else if (match.getType() == 1) {
+            std::cout << match.getSequence();
+        }
         
+        //writeToFile()
     }
+
     return 0;
 }
