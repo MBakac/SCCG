@@ -132,7 +132,6 @@ std::list<int> getLowercasePosition(std::string sequence) {
     return lowercasePositionList;
 }
 
-
 std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, int k) {
     std::map<std::size_t, std::vector<int>> hashTable;
 
@@ -175,13 +174,16 @@ std::vector<std::string> localMatching(
 ) {
     std::vector<std::string> out;
 
-    for (int i = 0; i < strlen(segment.c_str()) - k + 1; i++) {
-        //std::cout << i << std::endl;
+    for (int i = 0; i < segment.length() - k + 1; i++) {
         std::string kmer = segment.substr(i, k);
-        //std::cout << kmer << std::endl;
+
         std::size_t hash = std::hash<std::string>{}(kmer);
         
         if (!hashTable.contains(hash)) {
+            // break if the rest of the tagreg segment is shorter than k-mer length, i.e. no matches can be made anymore 
+            if (segment.length() - i < k) {
+                break;
+            }
             out.push_back(segment.substr(i, 1));
         } else {
             std::vector<int> list = hashTable[hash];
@@ -203,8 +205,9 @@ std::vector<std::string> localMatching(
             }
 
             //std::cout << "ml: " << maxLength << " i: " << i << "res: " << maxLength + k - i << std::endl;
-            out.push_back(std::to_string(list[maxLengthIndex]) + "," + std::to_string(maxLength + k - i));
-            i += maxLength;
+            out.push_back(std::to_string(list[maxLengthIndex]) + "," + std::to_string(maxLength + k - 2));
+            i += maxLength + k - 1;
+            out.push_back(segment.substr(i, 1));
         }
     }
 
