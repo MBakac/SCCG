@@ -4,6 +4,8 @@
 #include <cstring>
 #include <list>
 #include <string>
+#include <vector>
+#include <map>
 
 
 /**
@@ -131,6 +133,84 @@ std::list<int> getLowercasePosition(std::string sequence) {
 }
 
 
+std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, int k) {
+    std::map<std::size_t, std::vector<int>> hashTable;
+
+    for (int i = 0; i < strlen(segment.c_str()) - k + 1; i++) {
+        std::string kmer = segment.substr(i, k);
+
+        std::size_t hash = std::hash<std::string>{}(kmer);
+        
+        std::vector<int> list;
+
+        if (hashTable.contains(hash)) {
+            list = hashTable[hash];
+            list.push_back(i);
+        } else {
+            list = {i};
+        }
+
+        hashTable[hash] = list;
+    }
+
+    return hashTable;
+    /*
+    for (const auto& [key, value] : hashTable) {
+        std::vector<int> list = value;
+        std::string listString = "";
+        for (auto s : list) {
+            listString += std::to_string(s);
+            listString += ", "
+        }
+        std::cout << "hash: " << key << " list:" << listString << std::endl;            
+    }
+    */
+}
+
+std::vector<std::string> localMatching(
+    std::string segment,
+    std::string referenceSegment, 
+    std::map<std::size_t, std::vector<int>> hashTable, 
+    int k
+) {
+    std::vector<std::string> out;
+
+    for (int i = 0; i < strlen(segment.c_str()) - k + 1; i++) {
+        //std::cout << i << std::endl;
+        std::string kmer = segment.substr(i, k);
+        //std::cout << kmer << std::endl;
+        std::size_t hash = std::hash<std::string>{}(kmer);
+        
+        if (!hashTable.contains(hash)) {
+            out.push_back(segment.substr(i, 1));
+        } else {
+            std::vector<int> list = hashTable[hash];
+
+            int maxLength = 0;
+            int maxLengthIndex = 0;
+
+            for (int j = 0; j < list.size(); j++) {
+                int length = 0;
+
+                while (segment.substr(i + k, length) == referenceSegment.substr(list[j] + k, length)) {
+                    length++;
+                }
+
+                if (length > maxLength) {
+                    maxLength = length;
+                    maxLengthIndex = j;
+                }
+            }
+
+            //std::cout << "ml: " << maxLength << " i: " << i << "res: " << maxLength + k - i << std::endl;
+            out.push_back(std::to_string(list[maxLengthIndex]) + "," + std::to_string(maxLength + k - i));
+            i += maxLength;
+        }
+    }
+
+    return out;
+}
+
 int main( int argc, char **argv){
     if (argc <= 3) {
         std::cerr << "Missing argument." << std::endl;
@@ -183,7 +263,7 @@ int main( int argc, char **argv){
                 targetN += ",";
             }
             targetN += std::to_string(i);
-            first = false;         
+            first = false;
         }        
     }
 
@@ -194,5 +274,16 @@ int main( int argc, char **argv){
             referenceSequence += rSequence[i];
     }
 
+    std::map<std::size_t, std::vector<int>> testMap = generateHashTable(referenceSequence.substr(0, 30000), 21);
+    std::vector<std::string> s = localMatching(targetSequence.substr(0, 30000), referenceSequence.substr(0, 30000), testMap, 21);
+
+    for (auto a : s) {
+        if (isdigit(a[0]))
+            std::cout << std::endl;    
+        std::cout << a;
+        if (isdigit(a[0]))
+            std::cout << std::endl;    
+        
+    }
     return 0;
 }

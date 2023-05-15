@@ -1,2 +1,2 @@
 compile:
-	g++ SCCGC.cpp -o SCCGC
+	g++ --std=c++2a SCCGC.cpp -o SCCGC
