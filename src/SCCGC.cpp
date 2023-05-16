@@ -361,20 +361,20 @@ int main( int argc, char **argv){
 
     std::list<int> targetLowercase = getLowercasePosition(targetSequence);
     
-    std::string text = ""; 
+    std::string lowercasePostion = ""; 
     int index = 1;
     for (auto x = targetLowercase.begin(); x != targetLowercase.end(); ++x) {
-        text += std::to_string(*x);
+        lowercasePostion += std::to_string(*x);
         //separate start & end pairs by ; in file
         if(index % 2 == 0) {
-            text += ";";
+            lowercasePostion += ";";
         } else {
-            text += " ";
+            lowercasePostion += " ";
         }
         index += 1;
     }
 
-    writeToFile(intermFile, text);
+    writeToFile(intermFile, lowercasePostion);
     
     std::string tSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
@@ -386,30 +386,10 @@ int main( int argc, char **argv){
         rSequence += toupper(referenceSequence[i]);
     }
 
-    // deleting N characters
-    std::string targetN = "";
-    bool first = true;
-    for (int i=0; i<strlen(tSequence.c_str()); i++) {
-        if (tSequence[i] != 'N') {
-            targetSequence += tSequence[i];
-        } else {
-            if (!first) {
-                targetN += ",";
-            }
-            targetN += std::to_string(i);
-            first = false;
-        }        
-    }
+    bool global = false;
 
-    writeToFile(intermFile, targetN);
-
-    for (int i=0; i<strlen(rSequence.c_str()); i++) {
-        if (rSequence[i] != 'N')
-            referenceSequence += rSequence[i];
-    }
-
-    std::string refSegment = referenceSequence.substr(0, 30000);
-    std::string tarSegment = targetSequence.substr(0, 30000);
+    std::string refSegment = rSequence.substr(0, 30000);
+    std::string tarSegment = tSequence.substr(0, 30000);
 
     std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
     std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
@@ -437,6 +417,39 @@ int main( int argc, char **argv){
         
         //writeToFile()
     }
+
+    if(global) {
+        clearFile(intermFile);
+        writeToFile(intermFile, lowercasePostion);
+
+        // deleting N characters
+        std::string targetN = "";
+        bool first = true;
+        for (int i=0; i<strlen(tSequence.c_str()); i++) {
+            if (tSequence[i] != 'N') {
+                targetSequence += tSequence[i];
+            } else {
+                if (!first) {
+                    targetN += ",";
+                }
+                targetN += std::to_string(i);
+                first = false;
+            }        
+        }
+
+        writeToFile(intermFile, targetN);
+
+        for (int i=0; i<strlen(rSequence.c_str()); i++) {
+            if (rSequence[i] != 'N')
+                referenceSequence += rSequence[i];
+        }
+
+
+        std::map<std::size_t, std::vector<int>> gHash = generateHashTable(referenceSequence, 21);
+        std::vector<Entry> matches = globalMatching(targetSequence, referenceSequence, gHash, 21);
+    }
+    
+    
 
     return 0;
 }
