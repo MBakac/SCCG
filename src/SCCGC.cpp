@@ -265,6 +265,86 @@ std::vector<Entry> localMatching(
     return out;
 }
 
+std::vector<Entry> globalMatching(
+    std::string sequence,
+    std::string referenceSequence, 
+    std::map<std::size_t, std::vector<int>> hashTable, 
+    int k
+) {
+    // positions are marked as paris of integers p for position and l for length
+    std::vector<Entry> out;
+
+    int limit = 100;
+
+    for (int i = 0; i < sequence.length() - k + 1; i++) {
+        std::string kmer = sequence.substr(i, k);
+
+        std::size_t hash = std::hash<std::string>{}(kmer);
+        
+        if (!hashTable.contains(hash)) {
+            // break if the rest of the tagreg segment is shorter than k-mer length, i.e. no matches can be made anymore 
+            if (sequence.length() - i < k) {
+                break;
+            }
+
+            Entry e(sequence.substr(i, 1));
+            out.push_back(e);
+        } else {
+            std::vector<int> list = hashTable[hash];
+
+            int maxLength = 0;
+            int maxLengthIndex = 0;
+
+            bool match = false;
+            for (int j = 0; j < list.size(); j++) {
+                int length = 0;
+
+              // TODO
+              //if (list[j] -  > limit || list[j] -  < -limit) {
+              //    continue;
+              //}
+
+                match = true;
+                while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
+                    length++;
+                }
+
+                if (length > maxLength) {
+                    maxLength = length;
+                    maxLengthIndex = j;
+                }
+                //opcija kada su duljine jednake
+            }
+            // search matches in whole sequence without application of limit
+            if (!match) {
+                 for (int j = 0; j < list.size(); j++) {
+                    int length = 0;
+
+                    match = true;
+                    while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
+                        length++;
+                    }
+
+                    if (length > maxLength) {
+                        maxLength = length;
+                        maxLengthIndex = j;
+                    }
+                    //opcija kada su duljine jednake
+            }
+            }
+ 
+            Entry positions(list[maxLengthIndex], maxLength + k - 2);
+            out.push_back(positions);
+            i += maxLength + k - 1;
+
+            Entry e(sequence.substr(i, 1));
+            out.push_back(e);
+        }
+    }
+
+    return out;
+}
+
 int main( int argc, char **argv){
     if (argc <= 3) {
         std::cerr << "Missing argument." << std::endl;
