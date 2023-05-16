@@ -62,6 +62,7 @@ std::string getSequenceFromFile(char* file) {
 void writeToFile(std::string filename, std::string text) {
     std::ofstream file;
 
+    std::cout << "Write to file" << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
@@ -86,7 +87,7 @@ void writeToFile(std::string filename, std::string text) {
 */
 void clearFile(std::string filename) {
     std::ofstream file;
-
+    std::cout << "Clearing file" << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::trunc);
 
     file.close();
@@ -376,26 +377,27 @@ int main( int argc, char **argv){
 
     writeToFile(intermFile, lowercasePostion);
     
-    std::string tSequence;
+    std::string tUpperSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
-        tSequence += toupper(targetSequence[i]);
+        tUpperSequence += toupper(targetSequence[i]);
     }
 
-    std::string rSequence;
+    std::string rUpperSequence;
     for (int i=0; i<strlen(referenceSequence.c_str()); i++) {
-        rSequence += toupper(referenceSequence[i]);
+        rUpperSequence += toupper(referenceSequence[i]);
     }
 
     bool global = false;
 
-    std::string refSegment = rSequence.substr(0, 30000);
-    std::string tarSegment = tSequence.substr(0, 30000);
+    std::string refSegment = rUpperSequence.substr(0, 30000);
+    std::string tarSegment = tUpperSequence.substr(0, 30000);
 
-    std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
-    std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
+    //std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
+    //std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
 
     // write characters before first match
-
+    /*
+    
     for (int i = 0; i < matches.size(); i++) {
         Entry match = matches[i];
         int delta = 0;
@@ -416,7 +418,10 @@ int main( int argc, char **argv){
         }
         
         //writeToFile()
-    }
+    }*/
+
+
+    global = true;
 
     if(global) {
         clearFile(intermFile);
@@ -424,10 +429,11 @@ int main( int argc, char **argv){
 
         // deleting N characters
         std::string targetN = "";
+        std::string finalTargetSequence = "";
         bool first = true;
-        for (int i=0; i<strlen(tSequence.c_str()); i++) {
-            if (tSequence[i] != 'N') {
-                targetSequence += tSequence[i];
+        for (int i=0; i<strlen(tUpperSequence.c_str()); i++) {
+            if (tUpperSequence[i] != 'N') {
+                finalTargetSequence += tUpperSequence[i];
             } else {
                 if (!first) {
                     targetN += ",";
@@ -439,14 +445,35 @@ int main( int argc, char **argv){
 
         writeToFile(intermFile, targetN);
 
-        for (int i=0; i<strlen(rSequence.c_str()); i++) {
-            if (rSequence[i] != 'N')
-                referenceSequence += rSequence[i];
+        std::string finalReferenceSequence = "";
+        for (int i=0; i<strlen(rUpperSequence.c_str()); i++) {
+            if (rUpperSequence[i] != 'N')
+                finalReferenceSequence += rUpperSequence[i];
         }
 
 
-        std::map<std::size_t, std::vector<int>> gHash = generateHashTable(referenceSequence, 21);
-        std::vector<Entry> matches = globalMatching(targetSequence, referenceSequence, gHash, 21);
+        std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
+        std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, gHash, 21);
+
+        for (int i = 0; i < matches.size(); i++) {
+            Entry match = matches[i];
+            int delta = 0;
+
+            if (i >= 1) {
+                for (int j = i - 1; j > 0; j--) {
+                    if (matches[j].getType() == 0) {
+                        delta = matches[j].getLength() + matches[j].getPosition();
+                        break;
+                    }
+                }
+            }
+
+            if (match.getType() == 0) {
+                std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
+            } else if (match.getType() == 1) {
+                std::cout << match.getSequence();
+            }
+        }
     }
     
     
