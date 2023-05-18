@@ -120,8 +120,6 @@ void clearFile(std::string filename) {
 
 void zipFile(std::string filename, std::string mode="PPMD") {
     std::string output = filename + ".7z ";
-
-    std::cout << output << std::endl;
     system(("7za a " + output + " " + filename + " -m0=" + mode).c_str());
 }
 
