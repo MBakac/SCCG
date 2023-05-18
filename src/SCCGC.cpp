@@ -334,8 +334,6 @@ int main( int argc, char **argv){
     std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
     std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
 
-    // write characters before first match
-
     for (int i = 0; i < matches.size(); i++) {
         Entry match = matches[i];
         int delta = 0;
