@@ -62,6 +62,7 @@ std::string getSequenceFromFile(char* file) {
 void writeToFile(std::string filename, std::string text) {
     std::ofstream file;
 
+    std::cout << "Write to file" << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
@@ -86,7 +87,7 @@ void writeToFile(std::string filename, std::string text) {
 */
 void clearFile(std::string filename) {
     std::ofstream file;
-
+    std::cout << "Clearing file" << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::trunc);
 
     file.close();
@@ -265,6 +266,86 @@ std::vector<Entry> localMatching(
     return out;
 }
 
+std::vector<Entry> globalMatching(
+    std::string sequence,
+    std::string referenceSequence, 
+    std::map<std::size_t, std::vector<int>> hashTable, 
+    int k
+) {
+    // positions are marked as paris of integers p for position and l for length
+    std::vector<Entry> out;
+
+    int limit = 100;
+
+    for (int i = 0; i < sequence.length() - k + 1; i++) {
+        std::string kmer = sequence.substr(i, k);
+
+        std::size_t hash = std::hash<std::string>{}(kmer);
+        
+        if (!hashTable.contains(hash)) {
+            // break if the rest of the tagreg segment is shorter than k-mer length, i.e. no matches can be made anymore 
+            if (sequence.length() - i < k) {
+                break;
+            }
+
+            Entry e(sequence.substr(i, 1));
+            out.push_back(e);
+        } else {
+            std::vector<int> list = hashTable[hash];
+
+            int maxLength = 0;
+            int maxLengthIndex = 0;
+
+            bool match = false;
+            for (int j = 0; j < list.size(); j++) {
+                int length = 0;
+
+              // TODO
+              //if (list[j] -  > limit || list[j] -  < -limit) {
+              //    continue;
+              //}
+
+                match = true;
+                while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
+                    length++;
+                }
+
+                if (length > maxLength) {
+                    maxLength = length;
+                    maxLengthIndex = j;
+                }
+                //opcija kada su duljine jednake
+            }
+            // search matches in whole sequence without application of limit
+            if (!match) {
+                 for (int j = 0; j < list.size(); j++) {
+                    int length = 0;
+
+                    match = true;
+                    while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
+                        length++;
+                    }
+
+                    if (length > maxLength) {
+                        maxLength = length;
+                        maxLengthIndex = j;
+                    }
+                    //opcija kada su duljine jednake
+            }
+            }
+ 
+            Entry positions(list[maxLengthIndex], maxLength + k - 2);
+            out.push_back(positions);
+            i += maxLength + k - 1;
+
+            Entry e(sequence.substr(i, 1));
+            out.push_back(e);
+        }
+    }
+
+    return out;
+}
+
 int main( int argc, char **argv){
     if (argc <= 3) {
         std::cerr << "Missing argument." << std::endl;
@@ -281,59 +362,42 @@ int main( int argc, char **argv){
 
     std::list<int> targetLowercase = getLowercasePosition(targetSequence);
     
-    std::string text = ""; 
+    std::string lowercasePostion = ""; 
     int index = 1;
     for (auto x = targetLowercase.begin(); x != targetLowercase.end(); ++x) {
-        text += std::to_string(*x);
+        lowercasePostion += std::to_string(*x);
         //separate start & end pairs by ; in file
         if(index % 2 == 0) {
-            text += ";";
+            lowercasePostion += ";";
         } else {
-            text += " ";
+            lowercasePostion += " ";
         }
         index += 1;
     }
 
-    writeToFile(intermFile, text);
+    writeToFile(intermFile, lowercasePostion);
     
-    std::string tSequence;
+    std::string tUpperSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
-        tSequence += toupper(targetSequence[i]);
+        tUpperSequence += toupper(targetSequence[i]);
     }
 
-    std::string rSequence;
+    std::string rUpperSequence;
     for (int i=0; i<strlen(referenceSequence.c_str()); i++) {
-        rSequence += toupper(referenceSequence[i]);
+        rUpperSequence += toupper(referenceSequence[i]);
     }
 
-    // deleting N characters
-    std::string targetN = "";
-    bool first = true;
-    for (int i=0; i<strlen(tSequence.c_str()); i++) {
-        if (tSequence[i] != 'N') {
-            targetSequence += tSequence[i];
-        } else {
-            if (!first) {
-                targetN += ",";
-            }
-            targetN += std::to_string(i);
-            first = false;
-        }        
-    }
+    bool global = false;
 
-    writeToFile(intermFile, targetN);
+    std::string refSegment = rUpperSequence.substr(0, 30000);
+    std::string tarSegment = tUpperSequence.substr(0, 30000);
 
-    for (int i=0; i<strlen(rSequence.c_str()); i++) {
-        if (rSequence[i] != 'N')
-            referenceSequence += rSequence[i];
-    }
+    //std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
+    //std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
 
-    std::string refSegment = referenceSequence.substr(0, 30000);
-    std::string tarSegment = targetSequence.substr(0, 30000);
-
-    std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
-    std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
-
+    // write characters before first match
+    /*
+    
     for (int i = 0; i < matches.size(); i++) {
         Entry match = matches[i];
         int delta = 0;
@@ -354,7 +418,65 @@ int main( int argc, char **argv){
         }
         
         //writeToFile()
+    }*/
+
+
+    global = true;
+
+    if(global) {
+        clearFile(intermFile);
+        writeToFile(intermFile, lowercasePostion);
+
+        // deleting N characters
+        std::string targetN = "";
+        std::string finalTargetSequence = "";
+        bool first = true;
+        for (int i=0; i<strlen(tUpperSequence.c_str()); i++) {
+            if (tUpperSequence[i] != 'N') {
+                finalTargetSequence += tUpperSequence[i];
+            } else {
+                if (!first) {
+                    targetN += ",";
+                }
+                targetN += std::to_string(i);
+                first = false;
+            }        
+        }
+
+        writeToFile(intermFile, targetN);
+
+        std::string finalReferenceSequence = "";
+        for (int i=0; i<strlen(rUpperSequence.c_str()); i++) {
+            if (rUpperSequence[i] != 'N')
+                finalReferenceSequence += rUpperSequence[i];
+        }
+
+
+        std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
+        std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, gHash, 21);
+
+        for (int i = 0; i < matches.size(); i++) {
+            Entry match = matches[i];
+            int delta = 0;
+
+            if (i >= 1) {
+                for (int j = i - 1; j > 0; j--) {
+                    if (matches[j].getType() == 0) {
+                        delta = matches[j].getLength() + matches[j].getPosition();
+                        break;
+                    }
+                }
+            }
+
+            if (match.getType() == 0) {
+                std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
+            } else if (match.getType() == 1) {
+                std::cout << match.getSequence();
+            }
+        }
     }
+    
+    
 
     return 0;
 }
