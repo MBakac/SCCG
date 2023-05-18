@@ -52,6 +52,31 @@ std::string getSequenceFromFile(char* file) {
 }
 
 /**
+ * Function extracts input FASTA file comments
+ * 
+ * @author Martin Bakac
+ * 
+ * @param file Input FASTA file
+ * @return string of metadata
+ */  
+std::string getMetadataFromFile(char* file) {
+    std::ifstream input(file);
+    if(!input.good()){
+        std::cerr << "Error opening file" << std::endl;
+        return nullptr;
+    }
+
+    std::string line, content;
+    while(std::getline(input, line).good()) {
+        if(line.empty() || line[0] == '>') {
+            content += line;
+        }
+    }
+
+    return content;
+}
+
+/**
  * Function creates/opens a file and writes to it.
  * 
  * @author Marta Bonacin 
@@ -62,7 +87,7 @@ std::string getSequenceFromFile(char* file) {
 void writeToFile(std::string filename, std::string text) {
     std::ofstream file;
 
-    std::cout << "Write to file" << std::endl;
+    std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
@@ -91,6 +116,13 @@ void clearFile(std::string filename) {
     file.open(filename, std::ofstream::out|std::ofstream::trunc);
 
     file.close();
+}
+
+void zipFile(std::string filename, std::string mode="PPMD") {
+    std::string output = filename + ".7z ";
+
+    std::cout << output << std::endl;
+    system(("7za a " + output + " " + filename + " -m0=" + mode).c_str());
 }
 
 /**
@@ -373,7 +405,9 @@ int main( int argc, char **argv){
         index += 1;
     }
 
-    writeToFile(intermFile, lowercasePostion);
+    writeToFile(intermFile, "test");
+    // write metadata to file
+    writeToFile(intermFile, getMetadataFromFile(argv[1]));
 
     std::string tUpperSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
@@ -453,6 +487,8 @@ int main( int argc, char **argv){
             //writeToFile()
         }    
     }
+
+    zipFile(finalFolder);
 
     /*
     global = true;
