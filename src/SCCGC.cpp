@@ -138,7 +138,16 @@ std::list<int> getLowercasePosition(std::string sequence) {
 std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, int k) {
     std::map<std::size_t, std::vector<int>> hashTable;
 
-    for (int i = 0; i < strlen(segment.c_str()) - k + 1; i++) {
+    // special case k_mer where all characters are 'N'
+    /*
+    std::string nString = "";
+    for (int i = 0; i < k; i++) {
+        nString += "N";
+    }
+    
+    std::size_t nStringHash = std::hash<std::string>{}(nString);
+    */
+    for (int i = 0; i < segment.length() - k + 1; i++) {
         std::string kmer = segment.substr(i, k);
 
         std::size_t hash = std::hash<std::string>{}(kmer);
@@ -156,17 +165,6 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     }
 
     return hashTable;
-    /*
-    for (const auto& [key, value] : hashTable) {
-        std::vector<int> list = value;
-        std::string listString = "";
-        for (auto s : list) {
-            listString += std::to_string(s);
-            listString += ", "
-        }
-        std::cout << "hash: " << key << " list:" << listString << std::endl;            
-    }
-    */
 }
 
 
@@ -358,7 +356,7 @@ int main( int argc, char **argv){
 
     std::string intermFile = finalFolder + "/intermediate.txt";
 
-    //pre-processing
+    // pre-processing
 
     std::list<int> targetLowercase = getLowercasePosition(targetSequence);
     
@@ -376,7 +374,7 @@ int main( int argc, char **argv){
     }
 
     writeToFile(intermFile, lowercasePostion);
-    
+
     std::string tUpperSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
         tUpperSequence += toupper(targetSequence[i]);
@@ -389,38 +387,74 @@ int main( int argc, char **argv){
 
     bool global = false;
 
-    std::string refSegment = rUpperSequence.substr(0, 30000);
-    std::string tarSegment = tUpperSequence.substr(0, 30000);
+    // segment sequences
+    int segmentSize = 1000;
 
-    //std::map<std::size_t, std::vector<int>> testMap = generateHashTable(refSegment, 21);
-    //std::vector<Entry> matches = localMatching(tarSegment, refSegment, testMap, 21);
+    // TarSeq and RefSeq are short for target and reference sequence, resepctively
+    std::vector<std::string> segmentedTarSeq, segmentedRefSeq;
 
-    // write characters before first match
-    /*
+    for (int i = 0; i < tUpperSequence.length(); i += segmentSize) {
+        if (i + segmentSize > tUpperSequence.length()) {
+            segmentedTarSeq.push_back(tUpperSequence.substr(i, tUpperSequence.length()));
+        } else {
+            segmentedTarSeq.push_back(tUpperSequence.substr(i, segmentSize));
+        }
+    }
+
+    for (int i = 0; i < rUpperSequence.length(); i += segmentSize) {
+        if (i + segmentSize > rUpperSequence.length()) {
+            segmentedRefSeq.push_back(rUpperSequence.substr(i, rUpperSequence.length()));
+        } else {
+            segmentedRefSeq.push_back(rUpperSequence.substr(i, segmentSize));
+        }
+    }
+
+    // iterate over segments
+    for (int i = 0; i < segmentedTarSeq.size(); i++) {
+        std::string tarSegment = segmentedTarSeq[i];
+        std::string refSegment = segmentedRefSeq[i];
     
-    for (int i = 0; i < matches.size(); i++) {
-        Entry match = matches[i];
-        int delta = 0;
+        // k_mer size
+        int k = 21;
 
-        if (i >= 1) {
-            for (int j = i - 1; j > 0; j--) {
-                if (matches[j].getType() == 0) {
-                    delta = matches[j].getLength() + matches[j].getPosition();
-                    break;
+        std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k);
+        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k);
+
+        if (matches.size() == 0) {
+            int retryK = 11;
+            std::map<std::size_t, std::vector<int>> localHashTableRetry = generateHashTable(refSegment, retryK);
+            std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK);
+        }
+
+        if (matches.size() == 0) {
+            global = true;
+            break;
+        }
+
+        for (int i = 0; i < matches.size(); i++) {
+            Entry match = matches[i];
+            int delta = 0;
+
+            if (i >= 1) {
+                for (int j = i - 1; j > 0; j--) {
+                    if (matches[j].getType() == 0) {
+                        delta = matches[j].getLength() + matches[j].getPosition();
+                        break;
+                    }
                 }
             }
-        }
 
-        if (match.getType() == 0) {
-            std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
-        } else if (match.getType() == 1) {
-            std::cout << match.getSequence();
-        }
-        
-        //writeToFile()
-    }*/
+            if (match.getType() == 0) {
+                std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
+            } else if (match.getType() == 1) {
+                std::cout << match.getSequence();
+            }
+            
+            //writeToFile()
+        }    
+    }
 
-
+    /*
     global = true;
 
     if(global) {
@@ -475,7 +509,7 @@ int main( int argc, char **argv){
             }
         }
     }
-    
+    */
     
 
     return 0;
