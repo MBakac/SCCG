@@ -403,8 +403,8 @@ int main( int argc, char **argv){
         index += 1;
     }
 
-    writeToFile(intermFile, "test");
     // write metadata to file
+    clearFile(intermFile);
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
 
     std::string tUpperSequence;
@@ -441,6 +441,11 @@ int main( int argc, char **argv){
         }
     }
 
+    float t1 = 0.5;
+    float t2 = 4.0;
+
+    int consecutiveMissmatches = 0;
+
     // iterate over segments
     for (int i = 0; i < segmentedTarSeq.size(); i++) {
         std::string tarSegment = segmentedTarSeq[i];
@@ -458,11 +463,31 @@ int main( int argc, char **argv){
             std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK);
         }
 
+
         if (matches.size() == 0) {
             global = true;
             break;
         }
 
+        int characters = -1;
+        for (auto match : matches) {
+            if (match.getType() == 1) {
+                characters++;
+            }
+        }
+
+        if ((float) characters / (float) segmentSize >= t1) {
+            consecutiveMissmatches++;
+        } else {
+            consecutiveMissmatches = 0;
+        }
+
+        if (consecutiveMissmatches > t2) {
+            global = true;
+            break;
+        }
+
+        /* print like reference implementation
         for (int i = 0; i < matches.size(); i++) {
             Entry match = matches[i];
             int delta = 0;
@@ -480,13 +505,12 @@ int main( int argc, char **argv){
                 std::cout << std::endl << match.getPosition() - delta << "," << match.getLength() << std::endl;
             } else if (match.getType() == 1) {
                 std::cout << match.getSequence();
-            }
-            
-            //writeToFile()
-        }    
+            }            
+        }
+        */
     }
 
-    zipFile(finalFolder);
+    zipFile(intermFile);
 
     /*
     global = true;
