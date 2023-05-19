@@ -590,7 +590,8 @@ int main(int argc, char **argv){
             }
         }
 
-        foundMatches = matches;
+        for(auto match : matches)
+            foundMatches.push_back(match);
     }
 
 
