@@ -84,7 +84,7 @@ std::string getMetadataFromFile(char* file) {
  * @param filename Name of the file to write in.
  * @param text String which will be written in the file.
 */
-void writeToFile(std::string filename, std::string text) {
+void writeToFile(std::string filename, std::string text, bool newLine=true) {
     std::ofstream file;
 
     std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
@@ -98,7 +98,9 @@ void writeToFile(std::string filename, std::string text) {
     }
 
     file << text;
-    file << "\n";
+
+    if (newLine)
+        file << "\n";
 
     file.close();
 }
@@ -374,7 +376,35 @@ std::vector<Entry> globalMatching(
     return out;
 }
 
-int main( int argc, char **argv){
+void constructFile(std::string fileName, std::vector<Entry> entries) {
+    for (int i = 0; i < entries.size(); i++) {
+        Entry entry = entries[i];
+        int delta = 0;
+
+        if (i >= 1) {
+            for (int j = i - 1; j > 0; j--) {
+                if (entries[j].getType() == 0) {
+                    delta = entries[j].getLength() + entries[j].getPosition();
+                    break;
+                }
+            }
+        }
+
+        if (entry.getType() == 0) {
+            //std::cout << std::endl << entry.getPosition() - delta << "," << entry.getLength() << std::endl;
+            writeToFile(
+                fileName,
+                "\n" + std::to_string((entry.getPosition() - delta)) + "," + std::to_string(entry.getLength()) + "\n",
+                false
+            );
+        } else if (entry.getType() == 1) {
+            writeToFile(fileName, entry.getSequence(), false);
+            //std::cout << entry.getSequence();
+        }
+    }
+}
+
+int main(int argc, char **argv){
     if (argc <= 3) {
         std::cerr << "Missing argument." << std::endl;
         return -1;
@@ -446,6 +476,8 @@ int main( int argc, char **argv){
 
     int consecutiveMissmatches = 0;
 
+    std::vector<Entry> foundMatches;
+
     // iterate over segments
     for (int i = 0; i < segmentedTarSeq.size(); i++) {
         std::string tarSegment = segmentedTarSeq[i];
@@ -461,12 +493,6 @@ int main( int argc, char **argv){
             int retryK = 11;
             std::map<std::size_t, std::vector<int>> localHashTableRetry = generateHashTable(refSegment, retryK);
             std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK);
-        }
-
-
-        if (matches.size() == 0) {
-            global = true;
-            break;
         }
 
         int characters = -1;
@@ -486,6 +512,8 @@ int main( int argc, char **argv){
             global = true;
             break;
         }
+
+        foundMatches = matches;
 
         /* print like reference implementation
         for (int i = 0; i < matches.size(); i++) {
@@ -510,14 +538,9 @@ int main( int argc, char **argv){
         */
     }
 
-    zipFile(intermFile);
-
-    /*
-    global = true;
-
-    if(global) {
-        clearFile(intermFile);
-        writeToFile(intermFile, lowercasePostion);
+    if (global) {
+        //clearFile(intermFile);
+        //writeToFile(intermFile, lowercasePostion);
 
         // deleting N characters
         std::string targetN = "";
@@ -566,9 +589,13 @@ int main( int argc, char **argv){
                 std::cout << match.getSequence();
             }
         }
+
+        foundMatches = matches;
     }
-    */
-    
+
+
+    constructFile(intermFile, foundMatches);
+    zipFile(intermFile);
 
     return 0;
 }
