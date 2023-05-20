@@ -11,6 +11,19 @@
 
 #define ll long long
 
+/**
+ * Function receives file name and clears the file.
+ * 
+ * @author Marta Bonacin
+ * 
+ * @param filename The name of the file to be cleared.
+*/
+void clearFile(std::string filename) {
+    std::ofstream file;
+    std::cout << "Clearing file" << std::endl;
+    file.open(filename, std::ofstream::out|std::ofstream::trunc);
+}
+
 void unzipFile(std::string filePath, std::string outputFilePath) {
 	system(("7za e " + filePath + " -o" + outputFilePath + " -aos").c_str());
 }
@@ -104,10 +117,11 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
         std::cout << "processing line: " << line << std::endl;
 
         if (line[0] == '>') {
-            writeToFile(outputFile, line);
+            std::cout << line << std::endl;
+            writeToFile(outputFile, line.substr(0, line.length()));
         } else if (line.empty()) {
             //writeToFile(outputFile, "");
-        } else if (i == 1 or i == 2 or i == 3) { // skip lines 2, 3 and 4
+        } else if (i == 1 or i == 2) { // skip lines 2, 3 and 4
             std::cout << "skipping: " << line << std::endl;
         } else {
             // contains ','
@@ -160,7 +174,7 @@ int main( int argc, char **argv){
     std::string finalFolder = argv[3];
 
     unzipFile(compressedFilePath, "../data/resultsd/decompressed");
-    std::string filename("../data/resultsd/decompressed/test.txt");
+    std::string filename("../data/resultsd/decompressed/intermediate.txt");
 
     std::string compressedFile = readFileIntoString(filename);
 	//std::cout << compressedFile << std::endl;
@@ -174,6 +188,7 @@ int main( int argc, char **argv){
 
     std::string output = "../data/resultsd/result.fa";
 
+    clearFile(output);
     reconstruct(output, compressedFile, referenceSequence);
 
 	return 0;
