@@ -66,7 +66,7 @@ std::string getSequenceFromFile(char* file) {
 void writeToFile(std::string filename, std::string text, bool newLine=true) {
     std::ofstream file;
 
-    std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
+    //std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
@@ -97,29 +97,43 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
     int begin, length;
     int end = 0;
 
-    std::cout << "Reference: \n" << referenceFile << std::endl;
+    //std::cout << "Reference: \n" << referenceFile << std::endl;
 
-    for(auto line : lines) {
+    for(int i = 0; i < lines.size(); i++) {
+        std::string line = lines[i];
+        std::cout << "processing line: " << line << std::endl;
+
         if (line[0] == '>') {
             writeToFile(outputFile, line);
         } else if (line.empty()) {
-            writeToFile(outputFile, "");
+            //writeToFile(outputFile, "");
+        } else if (i == 1 or i == 2 or i == 3) { // skip lines 2, 3 and 4
+            std::cout << "skipping: " << line << std::endl;
         } else {
-            //contains ,
+            // contains ','
             if (line.find(",") != std::string::npos) {
                 begin = std::stoi(line.substr(0, line.find(",")));
                 length = std::stoi(line.substr(line.find(",") + 1, line.length() - line.find(",") - 1));
                 //std::cout << "Begin: " << begin << ", Length: " << length << std::endl;
-                target += referenceFile.substr(begin + end, length);
+                target += referenceFile.substr(begin + end, length + 1);
+
+                std::cout << "adding: " << referenceFile.substr(begin + end, length + 1) << std::endl;
                 end += begin + length;
                 
             } else {
-                target += line.substr(0, line.length() - 1);
+                target += line.substr(0, line.length());
             }
         }
     }
 
-    std::cout << "Target:\n" << target << std::endl;
+    for (int i = 0; i < target.length(); i++) {
+        if (i % 71 == 0) {
+            target.insert(i, 1, '\n');
+        }
+    }
+
+    std::cout << "Target BP:\n" << target.length() << std::endl;
+    writeToFile(outputFile, target);
 }
 
 /* COPY PASTE s https://www.delftstack.com/howto/cpp/read-file-into-string-cpp/ */
@@ -149,7 +163,7 @@ int main( int argc, char **argv){
     std::string filename("../data/resultsd/decompressed/test.txt");
 
     std::string compressedFile = readFileIntoString(filename);
-	std::cout << compressedFile << std::endl;
+	//std::cout << compressedFile << std::endl;
 
     //filename(referenceSequencePath);
 
