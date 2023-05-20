@@ -26,6 +26,8 @@ std::string readFileIntoString(const std::string& path) {
     return std::string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
 }
 
+// u reconstruct koristeno https://www.techiedelight.com/split-a-string-on-newlines-in-cpp/
+
 int main( int argc, char **argv){
 	if (argc <= 3) {
         std::cerr << "Missing argument." << std::endl;
@@ -37,7 +39,7 @@ int main( int argc, char **argv){
     std::string finalFolder = argv[3];
 
     unzipFile(compressedFilePath, "../data/resultsd/decompressed");
-    std::string filename("../data/resultsd/decompressed/intermediate.txt");
+    std::string filename("../data/resultsd/decompressed/test.txt");
 
     std::string compressedFile = readFileIntoString(filename);
 	std::cout << compressedFile << std::endl;

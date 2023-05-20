@@ -180,6 +180,9 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     std::size_t nStringHash = std::hash<std::string>{}(nString);
     */
     for (int i = 0; i < segment.length() - k + 1; i++) {
+        if (i + k > 1000)
+            return hashTable;
+
         std::string kmer = segment.substr(i, k);
 
         std::size_t hash = std::hash<std::string>{}(kmer);
@@ -195,6 +198,19 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
 
         hashTable[hash] = list;
     }
+
+    /*
+    for (const auto& [key, value] : hashTable) {
+        std::vector<int> list = value;
+        std::string listString = "";
+        for (auto s : list) {
+            listString += std::to_string(s);
+            listString += ", ";
+        }
+        std::string seq = ref.substr(list[0], k);
+        std::cout << "hash: " << key << " list:" << listString << " seq: " << seq << std::endl;            
+    }
+    */
 
     return hashTable;
 }
@@ -264,6 +280,7 @@ std::vector<Entry> localMatching(
             }
 
             Entry e(segment.substr(i, 1));
+            // std::cout << "doesnt contain k-mer, addiing: " << segment.substr(i, 1) << std::endl; 
             out.push_back(e);
         } else {
             std::vector<int> list = hashTable[hash];
@@ -289,6 +306,7 @@ std::vector<Entry> localMatching(
             i += maxLength + k - 1;
 
             Entry e(segment.substr(i, 1));
+            // std::cout << "adding p,l for : " << kmer << std::endl; 
             out.push_back(e);
         }
     }
@@ -309,7 +327,6 @@ std::vector<Entry> globalMatching(
 
     for (int i = 0; i < sequence.length() - k + 1; i++) {
         std::string kmer = sequence.substr(i, k);
-
         std::size_t hash = std::hash<std::string>{}(kmer);
         
         if (!hashTable.contains(hash)) {
@@ -391,7 +408,8 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
         }
 
         if (entry.getType() == 0) {
-            //std::cout << std::endl << entry.getPosition() - delta << "," << entry.getLength() << std::endl;
+            std::cout << std::endl << entry.getPosition() << " " << delta << std::endl;
+            std::cout << std::endl << entry.getPosition() - delta << "," << entry.getLength() << std::endl;
             writeToFile(
                 fileName,
                 "\n" + std::to_string((entry.getPosition() - delta)) + "," + std::to_string(entry.getLength()) + "\n",
@@ -478,6 +496,7 @@ int main(int argc, char **argv){
 
     std::vector<Entry> foundMatches;
 
+    /*
     // iterate over segments
     for (int i = 0; i < segmentedTarSeq.size(); i++) {
         std::string tarSegment = segmentedTarSeq[i];
@@ -486,7 +505,8 @@ int main(int argc, char **argv){
         // k_mer size
         int k = 21;
 
-        std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k);
+        std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, 
+            k);
         std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k);
 
         if (matches.size() == 0) {
@@ -513,7 +533,8 @@ int main(int argc, char **argv){
             break;
         }
 
-        foundMatches = matches;
+        for (auto match : matches)
+            foundMatches.push_back(match);
 
         /* print like reference implementation
         for (int i = 0; i < matches.size(); i++) {
@@ -535,9 +556,10 @@ int main(int argc, char **argv){
                 std::cout << match.getSequence();
             }            
         }
-        */
+        
     }
-
+    */
+    global = true;
     if (global) {
         //clearFile(intermFile);
         //writeToFile(intermFile, lowercasePostion);
@@ -566,6 +588,8 @@ int main(int argc, char **argv){
                 finalReferenceSequence += rUpperSequence[i];
         }
 
+        std::cout << finalReferenceSequence.length() << std::endl;
+
 
         std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
         std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, gHash, 21);
@@ -590,9 +614,9 @@ int main(int argc, char **argv){
             }
         }
 
-        foundMatches = matches;
+        for (auto match : matches)
+            foundMatches.push_back(match);
     }
-
 
     constructFile(intermFile, foundMatches);
     zipFile(intermFile);
