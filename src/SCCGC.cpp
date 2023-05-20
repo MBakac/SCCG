@@ -614,7 +614,7 @@ int main(int argc, char **argv){
             }
         }
 
-        for (auto match : matches)
+        for(auto match : matches)
             foundMatches.push_back(match);
     }
 
