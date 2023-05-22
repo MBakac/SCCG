@@ -430,6 +430,7 @@ std::vector<Entry> globalMatching(
 }
 
 void constructFile(std::string fileName, std::vector<Entry> entries) {
+    bool addNewLine = false;
     for (int i = 0; i < entries.size(); i++) {
         Entry entry = entries[i];
         int delta = 0;
@@ -471,16 +472,20 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
 
             writeToFile(
                 fileName,
-                "\n" + std::to_string((positionInReference - delta)) + "," + std::to_string(length) + "\n",
-                false
+                std::to_string((positionInReference - delta)) + "," + std::to_string(length),
+                true
             );
 
         } else if (entry.getType() == 1) {
-            writeToFile(fileName, entry.getSequence(), false);
+            if (i+1 == entries.size() || entries[i+1].getType() == 0)
+                addNewLine = true;
+            writeToFile(fileName, entry.getSequence(), addNewLine);
+            addNewLine = false;
             std::cout << entry.getSequence() << std::endl;
         }
     }
 }
+
 #define t1 (0.5f)
 #define t2 (4)
 #define segmentSize (1000)
@@ -498,7 +503,6 @@ int main(int argc, char **argv){
     const std::string intermFile = std::string(argv[3]) + "/intermediate.txt";
 
     // pre-processing
-
     const std::vector<size_t> targetLowercase = getLowercasePosition(targetSequence);
     
     //build lowercase letter position information to store in intermediate file
@@ -538,6 +542,7 @@ int main(int argc, char **argv){
     }
 
     bool global = false;
+    if (!global) writeToFile(intermFile, "");
 
     // TarSeq and RefSeq are short for target and reference sequence, resepctively
     std::vector<std::string> segmentedTarSeq, segmentedRefSeq;
@@ -573,6 +578,7 @@ int main(int argc, char **argv){
 
     // iterate over segments
     bool segments = true;
+    //segments = false;
 
     while (segments) {
         numberOfSegments++;
@@ -678,7 +684,7 @@ int main(int argc, char **argv){
         */
         
     }
-    
+    //global = true;
     if (global) {
         // deleting N characters
         std::string targetNposition = "";
@@ -691,6 +697,7 @@ int main(int argc, char **argv){
             }        
         }
 
+        std::cout << "target N postions:" << targetNposition << std::endl;
         writeToFile(intermFile, targetNposition);
 
         std::string finalReferenceSequence = "";

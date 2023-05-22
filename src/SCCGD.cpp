@@ -184,13 +184,13 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
         } else if(i == 1) {
             lineLength = std::stoi(line);
         } else if (i == 2 && !line.empty()) { //lowercase info
-            int start, end;
+            int startL, endL;
 
             while(line.find(";") && line.length() > 1) {
-                start = std::stoi(line.substr(0, line.find(" ")));
-                end = std::stoi(line.substr(line.find(" "), line.find(";")));
+                startL = std::stoi(line.substr(0, line.find(" ")));
+                endL = std::stoi(line.substr(line.find(" "), line.find(";")));
                 
-                Location locLower(start, end);
+                Location locLower(startL, endL);
                 lowercasePositions.push_back(locLower);
                 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
@@ -211,7 +211,8 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             if (line.find(",") != std::string::npos) {
                 begin = std::stoi(line.substr(0, line.find(",")));
                 length = std::stoi(line.substr(line.find(",") + 1, line.length() - line.find(",") - 1));
-                //std::cout << "Begin: " << begin << ", Length: " << length << std::endl;
+                std::cout << "Begin: " << begin << ", Length: " << length << std::endl;
+                std::cout << "Begin + end: " << begin + end << ", Length: " << length + 1 << std::endl;
                 target += referenceFile.substr(begin + end, length + 1);
 
                 std::cout << "adding: " << referenceFile.substr(begin + end, length + 1) << std::endl;
