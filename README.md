@@ -13,8 +13,9 @@ The main idea proposed by the paper is to exploit the inherent properties of gen
 
 ## Requirements
 
-g++ >= 9.0 (might have to change std=c++2* in Makefile depending on version)
-7z (7zip utility) (`sudo apt install p7zip-full` for Ubuntu like distros)
+ - `g++ >= 9.0`, might have to change std=c++2* in Makefile depending on version
+
+ - `7z`, 7zip utility (`sudo apt install p7zip-full` for Ubuntu like distros)
 
 ## Running the program
 
@@ -27,6 +28,6 @@ make compileD
 SCCGC ./path_to_target_file.fa ./path_to_reference_file ./output_folder
 
 # decompress with target file with reference file
-SCCGD ./path_to_reference_file ./path_to_target_file.fa ./output_folder
+SCCGD ./path_to_reference_file ./path_to_target_file.7z ./output_folder
 ```
 
