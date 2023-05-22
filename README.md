@@ -7,9 +7,11 @@ This project is part of the [Bioinformatics 1](https://www.fer.unizg.hr/en/cours
 
 Done by [Martin Bakač](https://www.martinbakac.from.hr/) and Marta Bonacin under the supervision of [izv. prof. dr. sc. Mirjana Domazet-Lošo](https://www.fer.unizg.hr/en/mirjana.domazet-loso).
 
+[Original implementation](https://github.com/jhchen5/SCCG) by Chen et al.
 ## Idea
 
 The main idea proposed by the paper is to exploit the inherent properties of genetic data in order to develop a compression algorithm with better compression ratios and a faster runtime.
+This is a C++ implementation of said algorithm.
 
 ## Requirements
 
