@@ -138,7 +138,7 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     std::string finalTarget = target;
 
     for(Location item : lowercasePosition) {
-        for (int i=item.getStart(); i <= item.getEnd(); i++) {
+        for (int i=item.getStart(); i < item.getEnd(); i++) {
             finalTarget[i] = tolower(finalTarget[i]);
         }
     }
@@ -164,6 +164,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
     std::string target = "";
     int begin, length;
     int end = 0;
+    int lineLength;
 
     std::vector<Location> lowercasePositions;
     std::vector<Location> Npositions;
@@ -176,10 +177,11 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             std::cout << line << std::endl;
             writeToFile(outputFile, line.substr(0, line.length()));
         } else if (line.empty()) {
+            std::cout << "line is empty" << std::endl;
             //writeToFile(outputFile, "");
 
         } else if(i == 1) {
-
+            lineLength = std::stoi(line);
         } else if (i == 2) { //lowercase info
             int start, end;
 
@@ -203,7 +205,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
 
                 line = line.substr(line.find(",") + 1, line.length() - line.find(","));
             }
-            //Npositions.push_back();
         } else {
             // contains ','
             if (line.find(",") != std::string::npos) {
@@ -220,13 +221,19 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             }
         }
     }
-
-    for (int i = 0; i < target.length(); i++) {
-        if (i % 71 == 0) {
-            target.insert(i, 1, '\n');
+    // changed i=0 to i=1
+    int numOfInsertions = 0;
+    std::cout << "target length " << target.length() << std::endl;
+    std::cout << "target:" << target << std::endl;
+    for (int i = 1; i <= target.length(); i++) {
+        if (i % lineLength == 0 && i != 0) {
+            std::cout << "i " << i << std::endl;
+            target.insert(i + numOfInsertions, 1, '\n');
+            numOfInsertions += 1;
         }
     }
 
+    std::cout << target << std::endl;
     std::string finalTarget = modifyCharacters(target, lowercasePositions, Npositions);
 
     std::cout << "Target BP:\n" << target.length() << std::endl;

@@ -10,6 +10,8 @@
 
 #define ll long long 
 
+int lineLength = 0;
+
 /**
  * Function turns input FASTA file into string
  * 
@@ -20,13 +22,14 @@
  * @param file Input FASTA file
  * @return string of file content
  */  
-std::string getSequenceFromFile(char* file) {
+std::string getSequenceFromFile(const char* file) {
     std::ifstream input(file);
     if(!input.good()){
         std::cerr << "Error opening file" << std::endl;
         return nullptr;
     }
 
+    bool firstPass = true;
     std::string line, content;
     while(std::getline(input, line).good()) {
         // skip comment line and return content if empty or comment line is read
@@ -40,6 +43,10 @@ std::string getSequenceFromFile(char* file) {
         } else {
             if (!line.empty())
                 content += line;
+            if(firstPass) {
+                lineLength = line.length();
+                firstPass = false;
+            }
         }
     }
 
@@ -142,35 +149,29 @@ void zipFile(std::string filename, std::string mode="PPMD") {
  * @param sequence String in which to find the position of lowercase characters.
  * @return List of start and end lowercase sequence positions.
 */
-std::list<int> getLowercasePosition(std::string sequence) {
+std::vector<size_t> getLowercasePosition(const std::string &sequence) {
     bool successive = false;
-    int start = 0;
-    int end = 0;
-    std::list<int> lowercasePositionList;
+    std::vector<size_t> lowercasePositionList;
 
-    for (int i=0; i<strlen(sequence.c_str()); i++) {
+    // Loop through each letter
+    for (size_t i=0; i < sequence.size(); i++) {
         if (islower(sequence[i])) {
-            if (successive) {
-                end += 1;
-            } else {
-                start = i;
-                end += 1;
+            // If first lowercase letter
+            if (!successive) {
+                lowercasePositionList.push_back(i);
                 successive = true;
             }
         } else {
+            // If end of successive lowercase letter sequence
             if (successive) {
-                lowercasePositionList.push_back(start);
-                lowercasePositionList.push_back(end);
-            } 
-            successive = false;
-            start = 0;
-            end = i + 1;
+                /**
+                 * Pushes the index of first letter that is not lowercase.
+                 * Push i - 1 if index of last lowercase letter desired.
+                */
+                lowercasePositionList.push_back(i);
+                successive = false;
+            }
         }
-    }
-
-    if (successive) {
-        lowercasePositionList.push_back(start);
-        lowercasePositionList.push_back(end);
     }
 
     return lowercasePositionList;
@@ -193,7 +194,7 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     // special case k_mer where all characters are 'N'
     /*
     std::string nString = "";
-    for (int i = 0; i < k; i++) {
+    for (int i = 0; i < k_merLength; i++) {
         nString += "N";
     }
     
@@ -239,6 +240,7 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
  * @author Martin Bakac
  */  
 class Entry {
+    private:
     int position, length, positionInReference;
     std::string sequence;
 
@@ -257,30 +259,30 @@ class Entry {
         positionInReference = pr;
     }
 
-    int getType() {return type;}
+    inline int getType() const noexcept {return type;}
     
-    int getPosition() {
+    inline int getPosition() const noexcept {
         if (type == 0)
             return position;
         else
             return 0;
     }
 
-    int getPositionInReference() {
+    inline int getPositionInReference() const noexcept {
         if (type == 0)
             return positionInReference;
         else
             return 0;
     }
 
-    int getLength() {
+    inline int getLength() const noexcept {
         if (type == 0)
             return length;
         else
             return 0; 
     }
 
-    std::string getSequence() {
+    inline std::string getSequence() const noexcept {
         if (type == 1)
             return sequence;
         else
@@ -374,15 +376,15 @@ std::vector<Entry> globalMatching(
     std::string sequence,
     std::string referenceSequence, 
     std::map<std::size_t, std::vector<int>> hashTable, 
-    int k
+    int k_merLength
 ) {
     // positions are marked as paris of integers p for position and l for length
     std::vector<Entry> out;
 
     int limit = 100;
 
-    for (int i = 0; i < sequence.length() - k + 1; i++) {
-        std::string kmer = sequence.substr(i, k);
+    for (int i = 0; i < sequence.length() - k_merLength + 1; i++) {
+        std::string kmer = sequence.substr(i, k_merLength);
         std::size_t hash = std::hash<std::string>{}(kmer);
         
         if (!hashTable.contains(hash)) {
@@ -390,7 +392,7 @@ std::vector<Entry> globalMatching(
             out.push_back(e);
 
             // transcribe "uncaught" part of segment (if last k-length segment is not matched)
-            if (i == sequence.length() - k) {
+            if (i == sequence.length() - k_merLength) {
                 Entry e(sequence.substr(i + 1, sequence.length()));
                 out.push_back(e);
             }
@@ -400,17 +402,11 @@ std::vector<Entry> globalMatching(
             int maxLength = 0;
             int maxLengthIndex = 0;
 
-            bool match = false;
+           
             for (int j = 0; j < list.size(); j++) {
                 int length = 0;
 
-              // TODO
-              //if (list[j] -  > limit || list[j] -  < -limit) {
-              //    continue;
-              //}
-
-                match = true;
-                while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
+                while (sequence.substr(i + k_merLength, length) == referenceSequence.substr(list[j] + k_merLength, length)) {
                     length++;
                 }
 
@@ -418,29 +414,12 @@ std::vector<Entry> globalMatching(
                     maxLength = length;
                     maxLengthIndex = j;
                 }
-                //opcija kada su duljine jednake
-            }
-            // search matches in whole sequence without application of limit
-            if (!match) {
-                for (int j = 0; j < list.size(); j++) {
-                    int length = 0;
-
-                    match = true;
-                    while (sequence.substr(i + k, length) == referenceSequence.substr(list[j] + k, length)) {
-                        length++;
-                    }
-
-                    if (length > maxLength) {
-                        maxLength = length;
-                        maxLengthIndex = j;
-                    }
-                    //opcija kada su duljine jednake
-                }
+                //TODO: situation when there are two same maxLengths
             }
  
-            Entry positions(i, maxLength + k - 2, list[maxLengthIndex]);
+            Entry positions(i, maxLength + k_merLength - 2, list[maxLengthIndex]);
             out.push_back(positions);
-            i += maxLength + k - 1;
+            i += maxLength + k_merLength - 1;
 
             Entry e(sequence.substr(i, 1));
             out.push_back(e);
@@ -502,6 +481,10 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
         }
     }
 }
+#define t1 (0.5f)
+#define t2 (4)
+#define segmentSize (1000)
+#define k_merLength (21)
 
 int main(int argc, char **argv){
     if (argc <= 3) {
@@ -511,14 +494,14 @@ int main(int argc, char **argv){
 
     std::string targetSequence = getSequenceFromFile(argv[1]);
     std::string referenceSequence = getSequenceFromFile(argv[2]);
-    std::string finalFolder = argv[3];
 
-    std::string intermFile = finalFolder + "/intermediate.txt";
+    const std::string intermFile = std::string(argv[3]) + "/intermediate.txt";
 
     // pre-processing
 
-    std::list<int> targetLowercase = getLowercasePosition(targetSequence);
+    const std::vector<size_t> targetLowercase = getLowercasePosition(targetSequence);
     
+    //build lowercase letter position information to store in intermediate file
     std::string lowercasePostion = ""; 
     int index = 1;
     for (auto x = targetLowercase.begin(); x != targetLowercase.end(); ++x) {
@@ -532,98 +515,91 @@ int main(int argc, char **argv){
         index += 1;
     }
 
-    // write metadata to file
+    //clear file before writing
     clearFile(intermFile);
 
-
+    // write metadata to file
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
-    
     // TODO: chars in line
-    writeToFile(intermFile, "");
-
+    writeToFile(intermFile, std::to_string(lineLength));
+    //write lowercase letter positions
     writeToFile(intermFile, lowercasePostion);
 
-    std::string tUpperSequence;
-    for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
-        tUpperSequence += toupper(targetSequence[i]);
+    // Changes lowercase letters to uppercase ones
+    for (char &c : targetSequence) {
+        if (c <= 'z' && c >= 'a') {
+            c += 'A' - 'a';
+        }
     }
-
-    std::string rUpperSequence;
-    for (int i=0; i<strlen(referenceSequence.c_str()); i++) {
-        rUpperSequence += toupper(referenceSequence[i]);
+    for (char &c : referenceSequence) {
+        if (c <= 'z' && c >= 'a') {
+            c += 'A' - 'a';
+        }
     }
 
     bool global = false;
-
-    // segment sequences
-    int segmentSize = 1000;
 
     // TarSeq and RefSeq are short for target and reference sequence, resepctively
     std::vector<std::string> segmentedTarSeq, segmentedRefSeq;
 
     /*
-    for (int i = 0; i < tUpperSequence.length(); i += segmentSize) {
-        if (i + segmentSize > tUpperSequence.length()) {
-            segmentedTarSeq.push_back(tUpperSequence.substr(i, tUpperSequence.length()));
+    for (int i = 0; i < targetSequence.length(); i += segmentSize) {
+        if (i + segmentSize > targetSequence.length()) {
+            segmentedTarSeq.push_back(targetSequence.substr(i, targetSequence.length()));
         } else {
-            segmentedTarSeq.push_back(tUpperSequence.substr(i, segmentSize));
+            segmentedTarSeq.push_back(targetSequence.substr(i, segmentSize));
         }
     }
     */
 
     /*
-    for (int i = 0; i < rUpperSequence.length(); i += segmentSize) {
-        if (i + segmentSize > rUpperSequence.length()) {
-            segmentedRefSeq.push_back(rUpperSequence.substr(i, rUpperSequence.length()));
+    for (int i = 0; i < referenceSequence.length(); i += segmentSize) {
+        if (i + segmentSize > referenceSequence.length()) {
+            segmentedRefSeq.push_back(referenceSequence.substr(i, referenceSequence.length()));
         } else {
-            segmentedRefSeq.push_back(rUpperSequence.substr(i, segmentSize));
+            segmentedRefSeq.push_back(referenceSequence.substr(i, segmentSize));
         }
     }
     */
 
-    float t1 = 0.5;
-    float t2 = 4.0;
 
     int consecutiveMissmatches = 0;
 
     std::vector<Entry> foundMatches;
 
-    int numerOfSegments = 0;
+    int numberOfSegments = 0;
     int targetStart = 0;
     int referenceStart = 0;
 
     // iterate over segments
     bool segments = true;
-    //segments = false;
 
     while (segments) {
-        numerOfSegments++;
-        std::cout << numerOfSegments + 1 << "-th new segment" << std::endl;
-        std::cout << tUpperSequence.substr(0, 21) << std::endl;
+        numberOfSegments++;
+        std::cout << numberOfSegments + 1 << "-th new segment" << std::endl;
+        std::cout << targetSequence.substr(0, 21) << std::endl;
         
         std::string tarSegment, refSegment;
 
-        if (targetStart + segmentSize >= tUpperSequence.length()) {
-            tarSegment = tUpperSequence.substr(targetStart, tUpperSequence.length() - targetStart);
+        if (targetStart + segmentSize >= targetSequence.length()) {
+            tarSegment = targetSequence.substr(targetStart, targetSequence.length() - targetStart);
             segments = false;
         } else {
-            tarSegment = tUpperSequence.substr(targetStart, segmentSize);
+            tarSegment = targetSequence.substr(targetStart, segmentSize);
         }
 
-        if (referenceStart + segmentSize >= rUpperSequence.length()) {
-            refSegment = rUpperSequence.substr(referenceStart, rUpperSequence.length() - referenceStart);
+        if (referenceStart + segmentSize >= referenceSequence.length()) {
+            refSegment = referenceSequence.substr(referenceStart, referenceSequence.length() - referenceStart);
             segments = false;
         } else {
-            refSegment = rUpperSequence.substr(referenceStart, segmentSize);
+            refSegment = referenceSequence.substr(referenceStart, segmentSize);
         }
     
         std::cout << "ref seq: " << refSegment.substr(0, 21) << std::endl;
         std::cout << "ref seq length: " << refSegment.length() << std::endl;
-        // k_mer size
-        int k = 21;
 
-        std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k);
-        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k, referenceStart);
+        const std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k_merLength);
+        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k_merLength, referenceStart);
 
         // ovo nebude nikad, treba promenit kaj broji samo type 1 matcheve
         if (matches.size() == 0) {
@@ -703,39 +679,30 @@ int main(int argc, char **argv){
         
     }
     
-    //global = true;
     if (global) {
-        //clearFile(intermFile);
-        //writeToFile(intermFile, lowercasePostion);
-
         // deleting N characters
-        std::string targetN = "";
+        std::string targetNposition = "";
         std::string finalTargetSequence = "";
-        bool first = true;
-        for (int i=0; i<strlen(tUpperSequence.c_str()); i++) {
-            if (tUpperSequence[i] != 'N') {
-                finalTargetSequence += tUpperSequence[i];
+        for (int i=0; i < targetSequence.size(); i++) {
+            if (targetSequence[i] != 'N') {
+                finalTargetSequence += targetSequence[i];
             } else {
-                if (!first) {
-                    targetN += ",";
-                }
-                targetN += std::to_string(i);
-                first = false;
+                targetNposition += std::to_string(i) + ",";
             }        
         }
-        //targetN += ",";
 
-        writeToFile(intermFile, targetN);
+        writeToFile(intermFile, targetNposition);
 
         std::string finalReferenceSequence = "";
-        for (int i=0; i<strlen(rUpperSequence.c_str()); i++) {
-            if (rUpperSequence[i] != 'N')
-                finalReferenceSequence += rUpperSequence[i];
+        for (const char &c : referenceSequence) {
+            if (c != 'N') {
+                finalReferenceSequence += c;
+            }
         }
 
         std::cout << finalReferenceSequence.length() << std::endl;
 
-        std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
+        const std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
         std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, gHash, 21);
 
         for (int i = 0; i < matches.size(); i++) {
@@ -761,8 +728,6 @@ int main(int argc, char **argv){
         for(auto match : matches)
             foundMatches.push_back(match);
     }
-
-    writeToFile(intermFile, "");
 
     constructFile(intermFile, foundMatches);
     zipFile(intermFile);
