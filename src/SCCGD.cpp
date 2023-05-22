@@ -138,6 +138,7 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     std::string finalTarget = target;
 
     for(Location item : lowercasePosition) {
+        item.getOutput();
         for (int i=item.getStart(); i < item.getEnd(); i++) {
             finalTarget[i] = tolower(finalTarget[i]);
         }
@@ -182,7 +183,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
 
         } else if(i == 1) {
             lineLength = std::stoi(line);
-        } else if (i == 2) { //lowercase info
+        } else if (i == 2 && !line.empty()) { //lowercase info
             int start, end;
 
             while(line.find(";") && line.length() > 1) {
@@ -195,7 +196,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
             
-        } else if (i == 3) { // N info
+        } else if (i == 3 && !line.empty()) { // N info
             int start;
             while(line.find(",") && line.length() > 1) {
                 start = std::stoi(line.substr(0, line.find(",")));
@@ -221,20 +222,16 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             }
         }
     }
-    // changed i=0 to i=1
-    int numOfInsertions = 0;
-    std::cout << "target length " << target.length() << std::endl;
-    std::cout << "target:" << target << std::endl;
-    for (int i = 1; i <= target.length(); i++) {
-        if (i % lineLength == 0 && i != 0) {
-            std::cout << "i " << i << std::endl;
-            target.insert(i + numOfInsertions, 1, '\n');
-            numOfInsertions += 1;
-        }
-    }
 
     std::cout << target << std::endl;
     std::string finalTarget = modifyCharacters(target, lowercasePositions, Npositions);
+
+    for (int i = 0; i < finalTarget.length(); i++) {
+        if (i % (lineLength+1) == 0) {
+            finalTarget.insert(i, 1, '\n');
+        }
+    }
+    finalTarget.erase(0,1);
 
     std::cout << "Target BP:\n" << target.length() << std::endl;
     writeToFile(outputFile, finalTarget);
