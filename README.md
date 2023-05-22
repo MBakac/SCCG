@@ -7,14 +7,29 @@ This project is part of the [Bioinformatics 1](https://www.fer.unizg.hr/en/cours
 
 Done by [Martin Bakač](https://www.martinbakac.from.hr/) and Marta Bonacin under the supervision of [izv. prof. dr. sc. Mirjana Domazet-Lošo](https://www.fer.unizg.hr/en/mirjana.domazet-loso).
 
+[Original implementation](https://github.com/jhchen5/SCCG) by Chen et al.
 ## Idea
 
 The main idea proposed by the paper is to exploit the inherent properties of genetic data in order to develop a compression algorithm with better compression ratios and a faster runtime.
+This is a C++ implementation of said algorithm.
+
+## Requirements
+
+ - `g++ >= 9.0`, might have to change std=c++2* in Makefile depending on version
+
+ - `7z`, 7zip utility (`sudo apt install p7zip-full` for Ubuntu like distros)
 
 ## Running the program
 
 ```
-# gruba skica samo radi markdowna
-sh ./run -i <input_data> -o <output_file>
+# compiles the compression and decompression programs, respectively
+make compile
+make compileD
+
+# compress with target file with reference file
+SCCGC ./path_to_target_file.fa ./path_to_reference_file ./output_folder
+
+# decompress with target file with reference file
+SCCGD ./path_to_reference_file ./path_to_target_file.7z ./output_folder
 ```
 
