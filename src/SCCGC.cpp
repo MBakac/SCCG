@@ -536,6 +536,7 @@ int main(int argc, char **argv){
     // write metadata to file
     clearFile(intermFile);
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
+    writeToFile(intermFile, lowercasePostion);
 
     std::string tUpperSequence;
     for (int i=0; i<strlen(targetSequence.c_str()); i++) {        
@@ -717,6 +718,7 @@ int main(int argc, char **argv){
                 first = false;
             }        
         }
+        targetN += ",";
 
         writeToFile(intermFile, targetN);
 
