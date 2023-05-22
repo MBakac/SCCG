@@ -84,17 +84,19 @@ std::string getMetadataFromFile(char* file) {
  * @param filename Name of the file to write in.
  * @param text String which will be written in the file.
 */
-void writeToFile(std::string filename, std::string text, bool newLine=true) {
+void writeToFile(std::string filename, std::string text, bool newLine=true, bool debug=false) {
     std::ofstream file;
 
-    //std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
+    if (debug)
+        std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
         std::cout << "Error in file creation!" << std::endl;
         return;
     } else {
-        //std::cout << "File created/opened successfully!" << std::endl;
+        if (debug)
+            std::cout << "File created/opened successfully!" << std::endl;
     }
 
     file << text;
@@ -120,6 +122,13 @@ void clearFile(std::string filename) {
     file.close();
 }
 
+/**
+ * Exectues system 7zip command with appropriate parameters
+ * 
+ * @author Martin Bakac
+ * 
+ * @param filename file to compress
+ */  
 void zipFile(std::string filename, std::string mode="PPMD") {
     std::string output = filename + ".7z ";
     system(("7za a " + output + " " + filename + " -m0=" + mode).c_str());
@@ -167,7 +176,18 @@ std::list<int> getLowercasePosition(std::string sequence) {
     return lowercasePositionList;
 }
 
-std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, int k) {
+
+/**
+ * Function generates hash table for given segment/sequence
+ * 
+ * @author Martin Bakac
+ * 
+ * @param input segment/sequence
+ * @param k_merLength length k_mer
+ * 
+ * @return hash table with hashes of k_mers as keys and lists of positions in reference segment
+ */  
+std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, int k_merLength) {
     std::map<std::size_t, std::vector<int>> hashTable;
 
     // special case k_mer where all characters are 'N'
@@ -179,15 +199,15 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     
     std::size_t nStringHash = std::hash<std::string>{}(nString);
     */
-    for (int i = 0; i < segment.length() - k + 1; i++) {
+    for (int i = 0; i < segment.length() - k_merLength + 1; i++) {
 
         // TODO: upitno
-        if (i + k > segment.length())
+        if (i + k_merLength > segment.length())
             return hashTable;
 
-        std::string kmer = segment.substr(i, k);
+        std::string k_mer = segment.substr(i, k_merLength);
 
-        std::size_t hash = std::hash<std::string>{}(kmer);
+        std::size_t hash = std::hash<std::string>{}(k_mer);
         
         std::vector<int> list;
 
@@ -201,24 +221,23 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
         hashTable[hash] = list;
     }
 
-    /*
-    for (const auto& [key, value] : hashTable) {
-        std::vector<int> list = value;
-        std::string listString = "";
-        for (auto s : list) {
-            listString += std::to_string(s);
-            listString += ", ";
-        }
-        std::string seq = ref.substr(list[0], k);
-        std::cout << "hash: " << key << " list:" << listString << " seq: " << seq << std::endl;            
-    }
-    */
-
     return hashTable;
 }
 
 
-// file entry
+/**
+ * Represents an output file entry whichs is either a pair of position and length or raw sequence of characters
+ * 
+ * The string only constructor takes a sequence of characters and sets the type to '1' to represent it's not a match,
+ * but a raw string
+ * 
+ * The p, l, pr constructor takes the p as the position of the matches sequence in the target string and, l as the length
+ * of the matched sequence and pr as the positon of the matches sequence in the reference sequence 
+ * 
+ * Methods are relevats setters/getters and type represents if it's a match or raw characters
+ * 
+ * @author Martin Bakac
+ */  
 class Entry {
     int position, length, positionInReference;
     std::string sequence;
@@ -269,38 +288,43 @@ class Entry {
     }
 };
 
+/**
+ * Function extracts input FASTA file comments
+ * 
+ * @author Martin Bakac
+ * 
+ * @param segment target segment
+ * @param referenceSegment reference segment
+ * @param hashTable hash table for reference segment
+ * @param k_merLength length of k_mer
+ * @param referenceStart last index in reference file
+ * 
+ * @return list of Entry objects representing matches and "loose" characters
+ */ 
 std::vector<Entry> localMatching(
     std::string segment,
     std::string referenceSegment, 
     std::map<std::size_t, std::vector<int>> hashTable, 
-    int k,
-    int nSegment, 
-    int segmentLength
+    int k_merLength,
+    int referenceStart
 ) {
     // positions are marked as paris of integers p for position and l for length
     std::vector<Entry> out;
 
-    std::cout << "segment: " << segment.substr(0, k) << std::endl;
+    std::cout << "segment: " << segment.substr(0, k_merLength) << std::endl;
 
-    for (int i = 0; i < segment.length() - k + 1; i++) {
-        std::string kmer = segment.substr(i, k);
+    for (int i = 0; i < segment.length() - k_merLength + 1; i++) {
+        std::string k_mer = segment.substr(i, k_merLength);
 
-        std::size_t hash = std::hash<std::string>{}(kmer);
+        std::size_t hash = std::hash<std::string>{}(k_mer);
         Entry lastEntry(0, 0); // potential bug
 
         if (!hashTable.contains(hash)) {
-            // break if the rest of the tagreg segment is shorter than k-mer length, i.e. no matches can be made anymore 
-            /*
-            if (segment.length() - i < k) {
-                break;
-            }
-            */
-
             Entry e(segment.substr(i, 1));
             std::cout << "doesnt contain k-mer, adding: " << segment.substr(i, 1) << std::endl; 
             out.push_back(e);
 
-            if (i == segment.length() - k) {
+            if (i == segment.length() - k_merLength) {
                 Entry e(segment.substr(i + 1, segment.length()));
                 out.push_back(e);
             }
@@ -317,9 +341,9 @@ std::vector<Entry> localMatching(
             for (int j = 0; j < list.size(); j++) {
                 int length = 1;
 
-                while (segment.substr(i + k, length) == referenceSegment.substr(list[j] + k, length) and 
-                    list[j] + k + length <= referenceSegment.length() and
-                    i + k + length <= referenceSegment.length()
+                while (segment.substr(i + k_merLength, length) == referenceSegment.substr(list[j] + k_merLength, length) and 
+                    list[j] + k_merLength + length <= referenceSegment.length() and
+                    i + k_merLength + length <= referenceSegment.length()
                 ) {
                     length++;
                 }
@@ -331,40 +355,16 @@ std::vector<Entry> localMatching(
             }
             
             // position in t, l, position in reference
-            Entry position(i, maxLength + k - 2, nSegment + list[maxLengthIndex]);
+            Entry position(i, maxLength + k_merLength - 2, referenceStart + list[maxLengthIndex]);
             out.push_back(position);
-            
-            std::cout << "adding p,l for : " << kmer << " p: " << i << " l: " << maxLength + k - 2 << " pir: " << list[maxLengthIndex] << std::endl; 
-            
-            i += maxLength + k - 2;
-
+                        
+            i += maxLength + k_merLength - 2;
             lastEntry = position;
-
-            //Entry e(segment.substr(i, 1));
-            //out.push_back(e);
         }
 
-        if (i + k > segment.length()) {
-            /*
-            std::cout << "here test" << std::endl;
-            int charsLeft = segment.length() - lastEntry.getPosition() - lastEntry.getLength() - 1;
-            if (charsLeft) {
-                std::cout << "i: " << i << std::endl;
-                std::cout << lastEntry.getPosition() << " " << lastEntry.getLength() << std::endl;
-                std::cout << lastEntry.getPosition() + lastEntry.getLength() << std::endl;
-                std::cout << "chars left: " << segment.length() - lastEntry.getPosition() - lastEntry.getLength() - 1 << std::endl;
-                Entry e(
-                    segment.substr(
-                        lastEntry.getPosition() + lastEntry.getLength(),
-                        segment.length() - lastEntry.getPosition() - lastEntry.getLength() + 1
-                    )
-                );
-                out.push_back(e);
-                std::cout << "left with some characters, adding: " << e.getSequence() << std::endl; 
-            }
-            */
+        if (i + k_merLength > segment.length()) {
             break;
-        }   
+        }
     }
 
     return out;
@@ -492,8 +492,7 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
 
             writeToFile(
                 fileName,
-                //"\n" + std::to_string((entry.getPositionInReference())) + "," + std::to_string(entry.getPositionInReference() + entry.getLength()) + "\n",
-                  "\n" + std::to_string((positionInReference - delta)) + "," + std::to_string(length) + "\n",
+                "\n" + std::to_string((positionInReference - delta)) + "," + std::to_string(length) + "\n",
                 false
             );
 
@@ -535,7 +534,13 @@ int main(int argc, char **argv){
 
     // write metadata to file
     clearFile(intermFile);
+
+
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
+    
+    // TODO: chars in line
+    writeToFile(intermFile, "");
+
     writeToFile(intermFile, lowercasePostion);
 
     std::string tUpperSequence;
@@ -589,7 +594,7 @@ int main(int argc, char **argv){
 
     // iterate over segments
     bool segments = true;
-    segments = false;
+    //segments = false;
 
     while (segments) {
         numerOfSegments++;
@@ -618,13 +623,13 @@ int main(int argc, char **argv){
         int k = 21;
 
         std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k);
-        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k, referenceStart, segmentSize);
+        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k, referenceStart);
 
         // ovo nebude nikad, treba promenit kaj broji samo type 1 matcheve
         if (matches.size() == 0) {
             int retryK = 11;
             std::map<std::size_t, std::vector<int>> localHashTableRetry = generateHashTable(refSegment, retryK);
-            std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK, referenceStart, segmentSize);
+            std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK, referenceStart);
         }
 
         int characters = -1;
@@ -698,7 +703,7 @@ int main(int argc, char **argv){
         
     }
     
-    global = true;
+    //global = true;
     if (global) {
         //clearFile(intermFile);
         //writeToFile(intermFile, lowercasePostion);
@@ -718,7 +723,7 @@ int main(int argc, char **argv){
                 first = false;
             }        
         }
-        targetN += ",";
+        //targetN += ",";
 
         writeToFile(intermFile, targetN);
 
@@ -757,7 +762,6 @@ int main(int argc, char **argv){
             foundMatches.push_back(match);
     }
 
-    writeToFile(intermFile, "");
     writeToFile(intermFile, "");
 
     constructFile(intermFile, foundMatches);
