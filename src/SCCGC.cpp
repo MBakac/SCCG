@@ -87,14 +87,14 @@ std::string getMetadataFromFile(char* file) {
 void writeToFile(std::string filename, std::string text, bool newLine=true) {
     std::ofstream file;
 
-    std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
+    //std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
     if(!file) {
         std::cout << "Error in file creation!" << std::endl;
         return;
     } else {
-        std::cout << "File created/opened successfully!" << std::endl;
+        //std::cout << "File created/opened successfully!" << std::endl;
     }
 
     file << text;
@@ -280,10 +280,13 @@ std::vector<Entry> localMatching(
     // positions are marked as paris of integers p for position and l for length
     std::vector<Entry> out;
 
+    std::cout << "segment: " << segment.substr(0, k) << std::endl;
+
     for (int i = 0; i < segment.length() - k + 1; i++) {
         std::string kmer = segment.substr(i, k);
 
         std::size_t hash = std::hash<std::string>{}(kmer);
+        Entry lastEntry(0, 0); // potential bug
 
         if (!hashTable.contains(hash)) {
             // break if the rest of the tagreg segment is shorter than k-mer length, i.e. no matches can be made anymore 
@@ -307,10 +310,17 @@ std::vector<Entry> localMatching(
             int maxLength = 0;
             int maxLengthIndex = 0;
 
-            for (int j = 0; j < list.size(); j++) {
-                int length = 0;
+            if (list.size() > 1) {
+                std::cout << std::endl << list.size() << std::endl;
+            }
 
-                while (segment.substr(i + k, length) == referenceSegment.substr(list[j] + k, length)) {
+            for (int j = 0; j < list.size(); j++) {
+                int length = 1;
+
+                while (segment.substr(i + k, length) == referenceSegment.substr(list[j] + k, length) and 
+                    list[j] + k + length <= referenceSegment.length() and
+                    i + k + length <= referenceSegment.length()
+                ) {
                     length++;
                 }
 
@@ -319,16 +329,42 @@ std::vector<Entry> localMatching(
                     maxLengthIndex = j;
                 }
             }
- 
-            Entry positions(list[maxLengthIndex], maxLength + k - 2, nSegment * segmentLength + list[maxLengthIndex]);
-            out.push_back(positions);
-            //i += maxLength + k - 2;
+            
+            // position in t, l, position in reference
+            Entry position(i, maxLength + k - 2, nSegment + list[maxLengthIndex]);
+            out.push_back(position);
+            
+            std::cout << "adding p,l for : " << kmer << " p: " << i << " l: " << maxLength + k - 2 << " pir: " << list[maxLengthIndex] << std::endl; 
+            
             i += maxLength + k - 2;
 
+            lastEntry = position;
+
             //Entry e(segment.substr(i, 1));
-            std::cout << "adding p,l for : " << kmer << std::endl; 
             //out.push_back(e);
         }
+
+        if (i + k > segment.length()) {
+            /*
+            std::cout << "here test" << std::endl;
+            int charsLeft = segment.length() - lastEntry.getPosition() - lastEntry.getLength() - 1;
+            if (charsLeft) {
+                std::cout << "i: " << i << std::endl;
+                std::cout << lastEntry.getPosition() << " " << lastEntry.getLength() << std::endl;
+                std::cout << lastEntry.getPosition() + lastEntry.getLength() << std::endl;
+                std::cout << "chars left: " << segment.length() - lastEntry.getPosition() - lastEntry.getLength() - 1 << std::endl;
+                Entry e(
+                    segment.substr(
+                        lastEntry.getPosition() + lastEntry.getLength(),
+                        segment.length() - lastEntry.getPosition() - lastEntry.getLength() + 1
+                    )
+                );
+                out.push_back(e);
+                std::cout << "left with some characters, adding: " << e.getSequence() << std::endl; 
+            }
+            */
+            break;
+        }   
     }
 
     return out;
@@ -402,7 +438,7 @@ std::vector<Entry> globalMatching(
                 }
             }
  
-            Entry positions(list[maxLengthIndex], maxLength + k - 2);
+            Entry positions(i, maxLength + k - 2, list[maxLengthIndex]);
             out.push_back(positions);
             i += maxLength + k - 1;
 
@@ -430,17 +466,40 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
             }
         }
 
+        std::cout << "printing" << std::endl;
         if (entry.getType() == 0) {
             //std::cout << std::endl << entry.getPosition() << " " << delta << std::endl;
-            //std::cout << std::endl << entry.getPosition() - delta << "," << entry.getLength() << std::endl;
+            
+            int positionInReference = entry.getPositionInReference();
+            int length = entry.getLength();
+
+            int j = 1;
+            bool exit = false;
+
+            while (i + j <= entries.size() and !exit) {
+                std::cout << entries[i + j].getType() << std::endl;
+                if (entries[i + j].getType() == 0) {
+                    length += entries[i + j].getLength() + 1;
+                    j++;
+                } else {
+                    std::cout << "broke" << std::endl;
+                    exit = true;
+                }
+            }
+
+            i += j - 1;
+            std::cout << std::to_string((positionInReference - delta)) + "," + std::to_string(length) << std::endl;
+
             writeToFile(
                 fileName,
-                "\n" + std::to_string((entry.getPositionInReference() - delta)) + "," + std::to_string(entry.getLength()) + "\n",
+                //"\n" + std::to_string((entry.getPositionInReference())) + "," + std::to_string(entry.getPositionInReference() + entry.getLength()) + "\n",
+                  "\n" + std::to_string((positionInReference - delta)) + "," + std::to_string(length) + "\n",
                 false
             );
+
         } else if (entry.getType() == 1) {
             writeToFile(fileName, entry.getSequence(), false);
-            //std::cout << entry.getSequence();
+            std::cout << entry.getSequence() << std::endl;
         }
     }
 }
@@ -496,6 +555,7 @@ int main(int argc, char **argv){
     // TarSeq and RefSeq are short for target and reference sequence, resepctively
     std::vector<std::string> segmentedTarSeq, segmentedRefSeq;
 
+    /*
     for (int i = 0; i < tUpperSequence.length(); i += segmentSize) {
         if (i + segmentSize > tUpperSequence.length()) {
             segmentedTarSeq.push_back(tUpperSequence.substr(i, tUpperSequence.length()));
@@ -503,7 +563,9 @@ int main(int argc, char **argv){
             segmentedTarSeq.push_back(tUpperSequence.substr(i, segmentSize));
         }
     }
+    */
 
+    /*
     for (int i = 0; i < rUpperSequence.length(); i += segmentSize) {
         if (i + segmentSize > rUpperSequence.length()) {
             segmentedRefSeq.push_back(rUpperSequence.substr(i, rUpperSequence.length()));
@@ -511,6 +573,7 @@ int main(int argc, char **argv){
             segmentedRefSeq.push_back(rUpperSequence.substr(i, segmentSize));
         }
     }
+    */
 
     float t1 = 0.5;
     float t2 = 4.0;
@@ -519,21 +582,48 @@ int main(int argc, char **argv){
 
     std::vector<Entry> foundMatches;
 
+    int numerOfSegments = 0;
+    int targetStart = 0;
+    int referenceStart = 0;
+
     // iterate over segments
-    for (int i = 0; i < segmentedTarSeq.size(); i++) {
-        std::string tarSegment = segmentedTarSeq[i];
-        std::string refSegment = segmentedRefSeq[i];
+    bool segments = true;
+    segments = false;
+
+    while (segments) {
+        numerOfSegments++;
+        std::cout << numerOfSegments + 1 << "-th new segment" << std::endl;
+        std::cout << tUpperSequence.substr(0, 21) << std::endl;
+        
+        std::string tarSegment, refSegment;
+
+        if (targetStart + segmentSize >= tUpperSequence.length()) {
+            tarSegment = tUpperSequence.substr(targetStart, tUpperSequence.length() - targetStart);
+            segments = false;
+        } else {
+            tarSegment = tUpperSequence.substr(targetStart, segmentSize);
+        }
+
+        if (referenceStart + segmentSize >= rUpperSequence.length()) {
+            refSegment = rUpperSequence.substr(referenceStart, rUpperSequence.length() - referenceStart);
+            segments = false;
+        } else {
+            refSegment = rUpperSequence.substr(referenceStart, segmentSize);
+        }
     
+        std::cout << "ref seq: " << refSegment.substr(0, 21) << std::endl;
+        std::cout << "ref seq length: " << refSegment.length() << std::endl;
         // k_mer size
         int k = 21;
 
         std::map<std::size_t, std::vector<int>> localHashTable = generateHashTable(refSegment, k);
-        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k, i, segmentSize);
+        std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTable, k, referenceStart, segmentSize);
 
+        // ovo nebude nikad, treba promenit kaj broji samo type 1 matcheve
         if (matches.size() == 0) {
             int retryK = 11;
             std::map<std::size_t, std::vector<int>> localHashTableRetry = generateHashTable(refSegment, retryK);
-            std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK, i, segmentSize);
+            std::vector<Entry> matches = localMatching(tarSegment, refSegment, localHashTableRetry, retryK, referenceStart, segmentSize);
         }
 
         int characters = -1;
@@ -556,6 +646,31 @@ int main(int argc, char **argv){
 
         for (auto match : matches)
             foundMatches.push_back(match);
+
+        Entry lastMatch(1000,1000,0);
+        for (int j = 0; j < matches.size(); j++) {
+            Entry match = matches[j];
+
+            if (match.getType() == 0) {
+                if (match.getPosition() + match.getLength() >= referenceStart) {
+                    //std::cout << match.getPositionInReference() << " " << match.getLength() << std::endl;
+                    // referenceStart = match.getPositionInReference() + match.getLength() + 1;
+                }
+
+                referenceStart = match.getPositionInReference() + match.getLength() + 1;
+
+                lastMatch = match;
+                //std::cout << std::endl << match.getPositionInReference() << "," << match.getPositionInReference() + match.getLength() << std::endl;
+            } else if (match.getType() == 1) {
+                std::cout << match.getSequence();
+                //referenceStart++;
+            }
+        }
+
+        targetStart += lastMatch.getPosition() + lastMatch.getLength() + 1;
+
+        //referenceStart = 0;
+        std::cout << "tar start: " << targetStart << "ref start: " << referenceStart << std::endl;
 
         // print like reference implementation
         /*
@@ -582,7 +697,7 @@ int main(int argc, char **argv){
         
     }
     
-    // global = true;
+    global = true;
     if (global) {
         //clearFile(intermFile);
         //writeToFile(intermFile, lowercasePostion);
