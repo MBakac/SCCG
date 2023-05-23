@@ -12,6 +12,46 @@
 #define ll long long
 
 /**
+ * Represents location information for certain character types
+ * 
+ * The empty constructor generates an instance of the class and initializes its variables to zero.
+ * 
+ * The s, c constructor takes value for the start position of such characters and the number of such characters. 
+ * 
+ * Methods are getters and setters, addConsecutive to add another character in a row and an output function.
+ * 
+ * @author Marta Bonacin
+ */  
+class Location {
+    int start, numberOfConsecutive;
+  
+  public:
+    Location() {
+        start = 0;
+        numberOfConsecutive = 0;
+    }
+    Location(int s, int c) {
+       start = s;
+       numberOfConsecutive = c; 
+    }
+    void setStart(int s) {
+        start = s;
+        numberOfConsecutive = 1;
+    }
+
+    void addConsecutive() {
+        numberOfConsecutive += 1;
+    }
+
+    int getStart() {return start;}
+    int getNumberOfConsecutive() {return numberOfConsecutive;}
+
+    void getOutput() {
+        std::cout << "start: " << start << ", number of consecutive: " << numberOfConsecutive << std::endl;
+    }
+};
+
+/**
  * Function creates/opens a file and writes to it.
  * 
  * @author Marta Bonacin 
@@ -65,6 +105,17 @@ void unzipFile(std::string filePath, std::string outputFilePath) {
 	system(("7za e " + filePath + " -o" + outputFilePath + " -aos").c_str());
 }
 
+/* COPY PASTE s https://www.delftstack.com/howto/cpp/read-file-into-string-cpp/ */
+std::string readFileIntoString(const std::string& path) {
+    std::ifstream input_file(path);
+    if (!input_file.is_open()) {
+        std::cerr << "Could not open the file - '"
+             << path << "'" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    return std::string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
+}
+
 /**
  * Function turns input FASTA file into string
  * 
@@ -106,25 +157,6 @@ std::string getSequenceFromFile(char* file) {
     }    
 }
 
-class Location {
-    int start, end = 0;
-  
-  public:
-    Location(int s) {
-        start = s;
-    }
-    Location(int s, int e) {
-        start = s;
-        end = e;
-    }
-    int getStart() {return start;}
-    int getEnd() {return end;}
-    void getOutput() {
-        std::cout << "start: " << start << ", end: " << end << std::endl;
-    }
-};
-
-
 /**
  * Function receives a string and modifies specified characters to produce final output string.
  * 
@@ -137,18 +169,42 @@ class Location {
 std::string modifyCharacters(std::string target, std::vector<Location> lowercasePosition, std::vector<Location> Nposition) {
     std::string finalTarget = target;
 
+    int previousEnd = 0;
+    bool first = true;
+    for(Location position : Nposition) {
+        position.getOutput();
+        if(first) {
+            for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
+                finalTarget.insert(position.getStart() + i, 1, 'N');
+            }
+            first = false;
+        } else {
+            for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
+                finalTarget.insert(position.getStart() + previousEnd + i, 1, 'N');
+            }
+        }
+        
+        previousEnd = position.getStart() + previousEnd + position.getNumberOfConsecutive() - 1;
+    }
+
+
+    first = true;
+    previousEnd = 0;
     for(Location item : lowercasePosition) {
         item.getOutput();
-        for (int i=item.getStart(); i < item.getEnd(); i++) {
-            finalTarget[i] = tolower(finalTarget[i]);
+        if(first) {
+            for (int i=0; i < item.getNumberOfConsecutive(); i++) {
+                finalTarget[item.getStart() + i] = tolower(finalTarget[item.getStart() + i]);
+            }
+            first = false;
+        } else {
+            for(int i = 0; i < item.getNumberOfConsecutive(); i++) {
+                finalTarget[item.getStart() + previousEnd + i] = tolower(finalTarget[item.getStart() + previousEnd + i]);
+            }
         }
-    }
 
-    for(Location position : Nposition) {
-        //position.getOutput();
-        finalTarget[position.getStart()] ='N';
+        previousEnd = item.getStart() + previousEnd + item.getNumberOfConsecutive() - 1;
     }
-
     return finalTarget;
 }
 
@@ -184,27 +240,30 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
         } else if(i == 1) {
             lineLength = std::stoi(line);
         } else if (i == 2 && !line.empty()) { //lowercase info
-            int startL, endL;
+            int relativeStartL, consecutiveL;
 
             while(line.find(";") && line.length() > 1) {
-                startL = std::stoi(line.substr(0, line.find(" ")));
-                endL = std::stoi(line.substr(line.find(" "), line.find(";")));
+                relativeStartL = std::stoi(line.substr(0, line.find(" ")));
+                consecutiveL = std::stoi(line.substr(line.find(" "), line.find(";")));
                 
-                Location locLower(startL, endL);
+                Location locLower(relativeStartL, consecutiveL);
                 lowercasePositions.push_back(locLower);
+                locLower.getOutput();
                 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
             
         } else if (i == 3 && !line.empty()) { // N info
-            int start;
-            while(line.find(",") && line.length() > 1) {
-                start = std::stoi(line.substr(0, line.find(",")));
+            int relativeStartN, consecutiveN;
+            while(line.find(";") && line.length() > 1) {
+                relativeStartN = std::stoi(line.substr(0, line.find(" ")));
+                consecutiveN = std::stoi(line.substr(line.find(" "), line.find(";")));
                 
-                Location Npos(start);
+                Location Npos(relativeStartN, consecutiveN);
                 Npositions.push_back(Npos);
+                Npos.getOutput();
 
-                line = line.substr(line.find(",") + 1, line.length() - line.find(","));
+                line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
         } else {
             // contains ','
@@ -236,17 +295,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
 
     std::cout << "Target BP:\n" << target.length() << std::endl;
     writeToFile(outputFile, finalTarget);
-}
-
-/* COPY PASTE s https://www.delftstack.com/howto/cpp/read-file-into-string-cpp/ */
-std::string readFileIntoString(const std::string& path) {
-    std::ifstream input_file(path);
-    if (!input_file.is_open()) {
-        std::cerr << "Could not open the file - '"
-             << path << "'" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    return std::string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
 }
 
 int main( int argc, char **argv){
