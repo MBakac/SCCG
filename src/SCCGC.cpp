@@ -12,7 +12,174 @@
 
 #define ll long long 
 
+#define LOWERCASECHAR (0)
+#define NCHAR (1)
+
 int lineLength = 0;
+
+
+/**
+ * Represents location information for certain character types
+ * 
+ * The empty constructor generates an instance of the class and initializes its variables to zero.
+ * 
+ * The s, c constructor takes value for the start position of such characters and the number of such characters. 
+ * 
+ * Methods are getters and setters, addConsecutive to add another character in a row and an output function.
+ * 
+ * @author Marta Bonacin
+ */  
+class Location {
+    int start, numberOfConsecutive;
+  
+  public:
+    Location() {
+        start = 0;
+        numberOfConsecutive = 0;
+    }
+    Location(int s, int c) {
+       start = s;
+       numberOfConsecutive = c; 
+    }
+
+    void setStart(int s) {
+        start = s;
+        numberOfConsecutive = 1;
+    }
+
+    int getStart() {return start;}
+    int getNumberOfConsecutive() {return numberOfConsecutive;}
+
+
+    void addConsecutive() {
+        numberOfConsecutive += 1;
+    }
+    void getOutput() {
+        std::cout << "start: " << start << ", number of consecutive: " << numberOfConsecutive << std::endl;
+    }
+};
+
+/**
+ * Represents an output file entry whichs is either a pair of position and length or raw sequence of characters
+ * 
+ * The string only constructor takes a sequence of characters and sets the type to '1' to represent it's not a match,
+ * but a raw string
+ * 
+ * The p, l, pr constructor takes the p as the position of the matches sequence in the target string and, l as the length
+ * of the matched sequence and pr as the positon of the matches sequence in the reference sequence 
+ * 
+ * Methods are relevats setters/getters and type represents if it's a match or raw characters
+ * 
+ * @author Martin Bakac
+ */  
+class Entry {
+    private:
+    int position, length, positionInReference;
+    std::string sequence;
+
+    int type; // 0 for (p, l) pair, 1 for sequence string
+  
+  public:
+    Entry(std::string s) {
+        sequence = s;
+        type = 1;
+    }
+
+    Entry(int p, int l, int pr = 0) {
+        position = p;
+        length = l;
+        type = 0;
+        positionInReference = pr;
+    }
+
+    inline int getType() const noexcept {return type;}
+    
+    inline int getPosition() const noexcept {
+        if (type == 0)
+            return position;
+        else
+            return 0;
+    }
+
+    inline int getPositionInReference() const noexcept {
+        if (type == 0)
+            return positionInReference;
+        else
+            return 0;
+    }
+
+    inline int getLength() const noexcept {
+        if (type == 0)
+            return length;
+        else
+            return 0; 
+    }
+
+    inline std::string getSequence() const noexcept {
+        if (type == 1)
+            return sequence;
+        else
+            return "";
+    }
+};
+
+/**
+ * Function creates/opens a file and writes to it.
+ * 
+ * @author Marta Bonacin 
+ * 
+ * @param filename Name of the file to write in.
+ * @param text String which will be written in the file.
+*/
+void writeToFile(std::string filename, std::string text, bool newLine=true, bool debug=false) {
+    std::ofstream file;
+
+
+    std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
+    file.open(filename, std::ofstream::out|std::ofstream::app);
+
+    if(!file) {
+        std::cout << "Error in file creation!" << std::endl;
+        return;
+    } else {
+        if (debug)
+            std::cout << "File created/opened successfully!" << std::endl;
+    }
+
+    file << text;
+
+    if (newLine)
+        file << "\n";
+
+    file.close();
+}
+
+/**
+ * Function receives file name and clears the file.
+ * 
+ * @author Marta Bonacin
+ * 
+ * @param filename The name of the file to be cleared.
+*/
+void clearFile(std::string filename) {
+    std::ofstream file;
+    std::cout << "Clearing file" << std::endl;
+    file.open(filename, std::ofstream::out|std::ofstream::trunc);
+
+    file.close();
+}
+
+/**
+ * Exectues system 7zip command with appropriate parameters
+ * 
+ * @author Martin Bakac
+ * 
+ * @param filename file to compress
+ */  
+void zipFile(std::string filename, std::string mode="PPMD") {
+    std::string output = filename + ".7z ";
+    system(("7za a " + output + " " + filename + " -m0=" + mode).c_str());
+}
 
 /**
  * Function turns input FASTA file into string
@@ -86,99 +253,84 @@ std::string getMetadataFromFile(char* file) {
 }
 
 /**
- * Function creates/opens a file and writes to it.
- * 
- * @author Marta Bonacin 
- * 
- * @param filename Name of the file to write in.
- * @param text String which will be written in the file.
-*/
-void writeToFile(std::string filename, std::string text, bool newLine=true, bool debug=false) {
-    std::ofstream file;
-
-    if (debug)
-        std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
-    file.open(filename, std::ofstream::out|std::ofstream::app);
-
-    if(!file) {
-        std::cout << "Error in file creation!" << std::endl;
-        return;
-    } else {
-        if (debug)
-            std::cout << "File created/opened successfully!" << std::endl;
-    }
-
-    file << text;
-
-    if (newLine)
-        file << "\n";
-
-    file.close();
-}
-
-/**
- * Function receives file name and clears the file.
- * 
- * @author Marta Bonacin
- * 
- * @param filename The name of the file to be cleared.
-*/
-void clearFile(std::string filename) {
-    std::ofstream file;
-    std::cout << "Clearing file" << std::endl;
-    file.open(filename, std::ofstream::out|std::ofstream::trunc);
-
-    file.close();
-}
-
-/**
- * Exectues system 7zip command with appropriate parameters
- * 
- * @author Martin Bakac
- * 
- * @param filename file to compress
- */  
-void zipFile(std::string filename, std::string mode="PPMD") {
-    std::string output = filename + ".7z ";
-    system(("7za a " + output + " " + filename + " -m0=" + mode).c_str());
-}
-
-/**
  * Function finds lowercase sequences and returns information about their position.
  * 
  * @author Marta Bonacin
  * 
- * @param sequence String in which to find the position of lowercase characters.
- * @return List of start and end lowercase sequence positions.
+ * @param sequence String in which to find the position of characters defined by type.
+ * @param type Type of characters to find. Can be LOWERCASECHAR (0) or NCHAR (1).
+ * @return List of locations.
 */
-std::vector<size_t> getLowercasePosition(const std::string &sequence) {
+std::vector<Location> getPositions(const std::string &sequence, int type) {
     bool successive = false;
-    std::vector<size_t> lowercasePositionList;
+    std::vector<Location> positions;
+    Location pos;
 
-    // Loop through each letter
-    for (size_t i=0; i < sequence.size(); i++) {
-        if (islower(sequence[i])) {
-            // If first lowercase letter
-            if (!successive) {
-                lowercasePositionList.push_back(i);
+    if (type == LOWERCASECHAR) {
+        for (size_t i=0; i < sequence.size(); i++) {
+            if (!islower(sequence[i])) {
+                if (successive) {
+                    positions.push_back(pos);
+                    pos.getOutput();
+                    successive = false;
+                }
+            } else if (!successive) {
+                pos.setStart(i);
                 successive = true;
-            }
-        } else {
-            // If end of successive lowercase letter sequence
-            if (successive) {
-                /**
-                 * Pushes the index of first letter that is not lowercase.
-                 * Push i - 1 if index of last lowercase letter desired.
-                */
-                lowercasePositionList.push_back(i);
-                successive = false;
-            }
+            } else {
+                pos.addConsecutive();
+            }        
+        }       
+    }
+
+
+    if (type == NCHAR) {
+        for (size_t i=0; i < sequence.size(); i++) {
+            if (sequence[i] != 'N') {
+                if (successive) {
+                    positions.push_back(pos);
+                    pos.getOutput();
+                    successive = false;
+                }
+            } else if (!successive) {
+                pos.setStart(i);
+                successive = true;
+            } else {
+                pos.addConsecutive();
+            }        
         }
     }
 
-    return lowercasePositionList;
+
+    return positions;
 }
 
+/**
+ * Function formats a string which represents information of charcter locations.
+ * 
+ * @author Marta Bonacin
+ * 
+ * @param positions List of locations.
+ * @return String of character locations. Individual locations separated by ";".
+*/
+std::string formatPositionString(std::vector<Location> positions) {
+    std::string targetPositions = "";
+    int previousEnd = 0;
+    bool first = true;
+    for (auto pos : positions) {
+        //last occurance of lowercase
+        if (first) {
+            targetPositions += std::to_string(pos.getStart()) + " " + std::to_string(pos.getNumberOfConsecutive()) + ";";
+            first = false;
+        } else {
+            std::cout << pos.getStart() << ", " << previousEnd << std::endl;
+            targetPositions += std::to_string(pos.getStart() - previousEnd) + " " + std::to_string(pos.getNumberOfConsecutive()) + ";";
+        }
+        previousEnd = pos.getStart() + pos.getNumberOfConsecutive() - 1;
+    }
+
+    return targetPositions;
+}
 
 /**
  * Function generates hash table for given segment/sequence
@@ -722,31 +874,15 @@ int main(int argc, char **argv){
     const std::string intermFile = std::string(argv[3]) + "/intermediate.txt";
 
     // pre-processing
-    const std::vector<size_t> targetLowercase = getLowercasePosition(targetSequence);
-    
-    //build lowercase letter position information to store in intermediate file
-    std::string lowercasePostion = ""; 
-    int index = 1;
-    for (auto x = targetLowercase.begin(); x != targetLowercase.end(); ++x) {
-        lowercasePostion += std::to_string(*x);
-        //separate start & end pairs by ; in file
-        if(index % 2 == 0) {
-            lowercasePostion += ";";
-        } else {
-            lowercasePostion += " ";
-        }
-        index += 1;
-    }
-
-    //clear file before writing
     clearFile(intermFile);
 
-    // write metadata to file
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
-    // TODO: chars in line
     writeToFile(intermFile, std::to_string(lineLength));
-    //write lowercase letter positions
-    writeToFile(intermFile, lowercasePostion);
+
+
+    const std::vector<Location> tLowercasePositions = getPositions(targetSequence, LOWERCASECHAR);
+    std::string targetLposition = formatPositionString(tLowercasePositions);
+    writeToFile(intermFile, targetLposition);
 
     // Changes lowercase letters to uppercase ones
     for (char &c : targetSequence) {
@@ -761,8 +897,6 @@ int main(int argc, char **argv){
     }
 
     bool global = false;
-    if (!global) writeToFile(intermFile, "");
-
     // TarSeq and RefSeq are short for target and reference sequence, resepctively
     std::vector<std::string> segmentedTarSeq, segmentedRefSeq;
 
@@ -907,23 +1041,25 @@ int main(int argc, char **argv){
     std::cout << "broke into global" << std::endl;
     std::cout << global << std::endl;
     //global = true;
+
+    if (!global) {
+        writeToFile(intermFile, "");
+    }
+    
     if (global) {
-        foundMatches.clear();
-        
-        // deleting N characters
-        std::string targetNposition = "";
+        const std::vector<Location> tNPositions = getPositions(targetSequence, NCHAR);
+
+        std::string targetNposition = formatPositionString(tNPositions);
+        std::cout << "target N postions:" << targetNposition << std::endl;
+        writeToFile(intermFile, targetNposition);
+
+
         std::string finalTargetSequence = "";
-        for (int i=0; i < targetSequence.size(); i++) {
-            if (targetSequence[i] != 'N') {
-                finalTargetSequence += targetSequence[i];
-            } else {
-                targetNposition += std::to_string(i) + ",";
-            }        
+        for (const char &c : targetSequence) {
+            if (c != 'N') {
+                finalTargetSequence += c;
+            }
         }
-
-
-        //std::cout << "target N postions:" << targetNposition << std::endl;
-        //writeToFile(intermFile, targetNposition);
         std::string finalReferenceSequence = "";
         for (const char &c : referenceSequence) {
             if (c != 'N') {
