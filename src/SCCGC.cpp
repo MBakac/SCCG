@@ -6,7 +6,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <utility>
+#include <limits.h>
 
 #define ll long long 
 
@@ -192,19 +194,20 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
     std::map<std::size_t, std::vector<int>> hashTable;
 
     // special case k_mer where all characters are 'N'
-    /*
     std::string nString = "";
     for (int i = 0; i < k_merLength; i++) {
         nString += "N";
     }
     
     std::size_t nStringHash = std::hash<std::string>{}(nString);
-    */
+
     for (int i = 0; i < segment.length() - k_merLength + 1; i++) {
 
+        std::cout << "tu: " << i << std::endl;
         // TODO: upitno
         if (i + k_merLength > segment.length())
             return hashTable;
+
 
         std::string k_mer = segment.substr(i, k_merLength);
 
@@ -220,11 +223,48 @@ std::map<std::size_t, std::vector<int>> generateHashTable(std::string segment, i
         }
 
         hashTable[hash] = list;
+
+        if (hash == nStringHash) {
+            while ((segment.substr(i + 1, 1) == "N" or
+                segment.substr(i + 1, 1) == "n") and
+                i < segment.length() - k_merLength + 1) {
+                i++;
+            }
+        }
     }
 
     return hashTable;
 }
 
+/**
+ * Function generates hash table for given segment/sequence
+ * 
+ * @author Martin Bakac
+ * 
+ * @param input segment/sequence
+ * @param k_merLength length k_mer
+ * 
+ * @return hash table with hashes of k_mers as keys and lists of positions in reference segment
+ */ 
+
+#define HashTableMaxSize 1073741824
+/*
+int *generateGlobalHashTable(std::string sequence, int k_merLength) {
+    int k_merLocations[globalHashTableMaxSize];
+
+    for (int i = 0; i < globalHashTableMaxSize; i++)
+        k_merLocations[i] = -1;
+    
+    for (int i = 0; i < sequence.length() - k_merLength + 1; i++) {
+        std::string k_mer = sequence.substr(i, k_merLength);
+        std::size_t hash = std::hash<std::string>{}(k_mer);
+        
+        k_merLocations[i] = hash;
+    }
+
+    return k_merLocations;
+}
+*/
 
 /**
  * Represents an output file entry whichs is either a pair of position and length or raw sequence of characters
@@ -372,64 +412,209 @@ std::vector<Entry> localMatching(
     return out;
 }
 
+#define limit 100
+
 std::vector<Entry> globalMatching(
     std::string sequence,
     std::string referenceSequence, 
-    std::map<std::size_t, std::vector<int>> hashTable, 
     int k_merLength
 ) {
     // positions are marked as paris of integers p for position and l for length
-    std::vector<Entry> out;
+    std::vector<Entry> matches;
+    int i = 0;
+    int startIndex;
+    
+    Entry lastEntry(0, 0, 0);
+    
+    std::unordered_map<size_t, int> hashTable;
+    std::unordered_map<int, int> nextKmer;
 
-    int limit = 100;
+    int test = referenceSequence.length() - k_merLength + 1;
 
-    for (int i = 0; i < sequence.length() - k_merLength + 1; i++) {
+    for (int i = 0; i < referenceSequence.length() - k_merLength + 1; i++) {
+        std::string k_mer = referenceSequence.substr(i, k_merLength);
+        std::size_t hash = std::hash<std::string>{}(k_mer);
+        
+        if (!hashTable.contains(hash)) {
+            hashTable[hash] = -1;
+        }
+
+        if (i % 1000000 == 0) {
+            std::cout << "next_kmer[i]: " << hashTable[hash] << std::endl;
+            std::cout << "kmer_location[(int) key]= " << i <<std::endl;
+            std::cout << "Creating global hash table: " << i << "/" << test << std::endl;
+        }
+
+        nextKmer[i] = hashTable[hash];
+        hashTable[hash] = i;
+    }
+
+    std::cout << "ajme meni, složili smo mape" << std::endl;
+
+    //for (int i = 0; i < sequence.length() - k_merLength + 1; i++) {
+    while (true) {
+        int length = 0;
+        int maxLength = 0;
+        
+        if (i + k_merLength - 1 > sequence.length())
+            break;
+
         std::string kmer = sequence.substr(i, k_merLength);
         std::size_t hash = std::hash<std::string>{}(kmer);
         
+        std::cout << "kmer: " << kmer << std::endl;
+
         if (!hashTable.contains(hash)) {
-            Entry e(sequence.substr(i, 1));
-            out.push_back(e);
+            //Entry e(sequence.substr(i, 1));
+            //matches.push_back(e);
+            
+            startIndex = std::numeric_limits<int>::max();
+            i++;
 
-            // transcribe "uncaught" part of segment (if last k-length segment is not matched)
-            if (i == sequence.length() - k_merLength) {
-                Entry e(sequence.substr(i + 1, sequence.length()));
-                out.push_back(e);
+            std::cout << "no match, adding: " << sequence.substr(i, 1) << std::endl;
+            if (i + k_merLength > sequence.length()) {
+                break;
             }
-        } else {
-            std::vector<int> list = hashTable[hash];
-
-            int maxLength = 0;
-            int maxLengthIndex = 0;
-
-           
-            for (int j = 0; j < list.size(); j++) {
-                int length = 0;
-
-                while (sequence.substr(i + k_merLength, length) == referenceSequence.substr(list[j] + k_merLength, length)) {
-                    length++;
-                }
-
-                if (length > maxLength) {
-                    maxLength = length;
-                    maxLengthIndex = j;
-                }
-                //TODO: situation when there are two same maxLengths
-            }
- 
-            Entry positions(i, maxLength + k_merLength - 2, list[maxLengthIndex]);
-            out.push_back(positions);
-            i += maxLength + k_merLength - 1;
-
-            Entry e(sequence.substr(i, 1));
-            out.push_back(e);
+            
+            continue;   
         }
+
+        startIndex = std::numeric_limits<int>::max();
+        maxLength = 0;
+        bool match = false;
+
+        for (int k = hashTable[hash]; k != -1;) {
+            std::cout << "k: " << k <<std::endl;
+            int lastEndInReference = lastEntry.getLength() + lastEntry.getPosition();
+            length = 0;
+
+            if (k - lastEndInReference > limit or k - lastEndInReference < -limit) {
+                std::cout << "limit, lastEIR: " << lastEndInReference << std::endl;
+
+                if (nextKmer.contains(k)) {
+                    k = nextKmer[k];
+                } else {
+                    k = -1;
+                }
+
+                continue;
+            }
+
+            match = true;
+
+            // find longest matching
+            int targetEnd = i + k_merLength;
+            int referenceEnd = k + k_merLength;
+
+            std::cout << std::endl << "refEnd: " << referenceEnd << " tarEnd: " << targetEnd;
+            std::cout << std::endl << " ref25: " << sequence.substr(k, 25) << " tarEndChar: "
+                << referenceSequence.substr(i, 25) << std::endl;
+            
+            if (referenceEnd + 1 < referenceSequence.length() and
+                targetEnd + 1 < sequence.length()
+            ) {
+                while (sequence.substr(targetEnd, 1) == referenceSequence.substr(referenceEnd, 1) and 
+                    referenceEnd < referenceSequence.length() and
+                    targetEnd < sequence.length()
+                ) {
+                    targetEnd++;
+                    referenceEnd++;
+                    length++;
+                }    
+            }
+            
+
+            if (length == maxLength) {
+                if (matches.size() > 1) {
+                    if (k < startIndex)
+                        startIndex = k;
+                }
+            } else if (length > maxLength) {
+                maxLength = length;
+                startIndex = k;
+            }
+
+            if (nextKmer.contains(k)) {
+                k = nextKmer[k];
+                std::cout << "nextKmer[k]: " << k << std::endl;
+            } else {
+                k = -1;
+            }
+        }
+
+        if (!match) {
+            // last EIR možda potpuno nepotreban
+            for (int k = hashTable[hash]; k != -1;) {
+                std::cout << "in limitless k: " << k <<std::endl;
+                int lastEndInReference = lastEntry.getLength() + lastEntry.getPositionInReference();
+                length = 0;
+
+                std::string referenceK_mer = referenceSequence.substr(k, k_merLength);
+                if (!(referenceK_mer == kmer)) {
+                    k = -1;
+                    continue;
+                }
+
+                int targetEnd = i + k_merLength;
+                int referenceEnd = k + k_merLength;
+
+                if (referenceEnd + 1 < referenceSequence.length() and
+                    targetEnd + 1 < sequence.length()
+                ) {
+                    while (sequence.substr(targetEnd, 1) == referenceSequence.substr(referenceEnd, 1) and 
+                        referenceEnd < referenceSequence.length() and
+                        targetEnd < sequence.length()
+                    ) {
+                        targetEnd++;
+                        referenceEnd++;
+                        length++;
+                    }    
+                }
+
+                if (length == maxLength) {
+                    if (matches.size() > 1) {
+                        if (k < startIndex)
+                            startIndex = k;
+                    }
+                } else if (length > maxLength) {
+                    maxLength = length;
+                    startIndex = k;
+                }
+
+                if (nextKmer.contains(k)) {
+                    k = nextKmer[k];
+                    std::cout << "nextKmer[k]: " << k << std::endl;
+                } else {
+                    k = -1;
+                }
+            }
+        }
+
+        if (startIndex == std::numeric_limits<int>::max()) {
+            i++;
+            if (i + k_merLength > sequence.length()) {
+                break;
+            }
+            continue;
+        }
+
+        std::cout << "found match: " << i << " si: " << startIndex << " l: " << maxLength + k_merLength<< std::endl;
+        if (maxLength + k_merLength + 5 < 5000) {
+            std::cout << sequence.substr(i, maxLength + k_merLength + 5) << std::endl << referenceSequence.substr(startIndex, maxLength + k_merLength + 5) << std::endl;    
+        }
+
+        Entry position(i, maxLength + k_merLength, startIndex);
+        matches.push_back(position);
+                    
+        i += maxLength + k_merLength + 1;
+        std::cout << "idx post: " << i << std::endl;
+        lastEntry = position;
     }
 
-    return out;
+    return matches;
 }
 
-void constructFile(std::string fileName, std::vector<Entry> entries) {
+void legacyConstructFile(std::string fileName, std::vector<Entry> entries) {
     bool addNewLine = false;
     for (int i = 0; i < entries.size(); i++) {
         Entry entry = entries[i];
@@ -485,6 +670,40 @@ void constructFile(std::string fileName, std::vector<Entry> entries) {
         }
     }
 }
+
+void constructFile(
+    std::string fileName,
+    std::vector<Entry> entries,
+    std::string targetSequence
+) {
+    int delta = 0;
+
+    for (int i = 0; i < entries.size(); i++) {
+        Entry e = entries[i];
+
+        if (i == 0 and e.getPosition() > 0) {
+            writeToFile(fileName, targetSequence.substr(0, e.getPosition()));
+        } else {
+            delta = entries[i - 1].getLength() + entries[i - 1].getPositionInReference();
+            int prevEndInTarget = entries[i - 1].getPosition() + entries[i - 1].getLength();
+
+            // unmatched charactes
+            writeToFile(
+                fileName, 
+                targetSequence.substr(
+                    prevEndInTarget,
+                    e.getPosition() - prevEndInTarget 
+                )
+            );
+        }
+        
+        writeToFile(
+            fileName,
+            std::to_string((e.getPositionInReference() - delta + 1)) + "," + std::to_string(e.getLength() - 1)
+        );
+    }
+}
+
 
 #define t1 (0.5f)
 #define t2 (4)
@@ -684,8 +903,13 @@ int main(int argc, char **argv){
         */
         
     }
+
+    std::cout << "broke into global" << std::endl;
+    std::cout << global << std::endl;
     //global = true;
     if (global) {
+        foundMatches.clear();
+        
         // deleting N characters
         std::string targetNposition = "";
         std::string finalTargetSequence = "";
@@ -697,9 +921,9 @@ int main(int argc, char **argv){
             }        
         }
 
-        std::cout << "target N postions:" << targetNposition << std::endl;
-        writeToFile(intermFile, targetNposition);
 
+        //std::cout << "target N postions:" << targetNposition << std::endl;
+        //writeToFile(intermFile, targetNposition);
         std::string finalReferenceSequence = "";
         for (const char &c : referenceSequence) {
             if (c != 'N') {
@@ -709,8 +933,8 @@ int main(int argc, char **argv){
 
         std::cout << finalReferenceSequence.length() << std::endl;
 
-        const std::map<std::size_t, std::vector<int>> gHash = generateHashTable(finalReferenceSequence, 21);
-        std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, gHash, 21);
+        //const int *gHash = generateGlobalHashTable(finalReferenceSequence, 21);
+        std::vector<Entry> matches = globalMatching(finalTargetSequence, finalReferenceSequence, 21);
 
         for (int i = 0; i < matches.size(); i++) {
             Entry match = matches[i];
@@ -732,11 +956,15 @@ int main(int argc, char **argv){
             }
         }
 
+        /*
         for(auto match : matches)
             foundMatches.push_back(match);
+        */
+
+        constructFile(intermFile, matches, finalTargetSequence);
     }
 
-    constructFile(intermFile, foundMatches);
+
     zipFile(intermFile);
 
     return 0;
