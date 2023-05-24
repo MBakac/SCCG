@@ -8,6 +8,7 @@
 #include <map>
 #include <utility>
 #include <regex>
+#include <algorithm>
 
 #define ll long long
 
@@ -172,39 +173,63 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     int previousEnd = 0;
     bool first = true;
     for(Location position : Nposition) {
-        position.getOutput();
+        //position.getOutput();
         if(first) {
+            /*
             for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
                 finalTarget.insert(position.getStart() + i, 1, 'N');
             }
+            */
+            finalTarget.insert(position.getStart(), position.getNumberOfConsecutive(), 'N');
             first = false;
         } else {
+            /*
             for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
                 finalTarget.insert(position.getStart() + previousEnd + i, 1, 'N');
             }
+            */
+            if (position.getStart() + previousEnd > finalTarget.length()) {
+                std::string ns(position.getNumberOfConsecutive(), 'N'); 
+                finalTarget += ns;
+            } else {
+                finalTarget.insert(position.getStart() + previousEnd, position.getNumberOfConsecutive(), 'N');
+            }
         }
         
-        previousEnd = position.getStart() + previousEnd + position.getNumberOfConsecutive() - 1;
+        previousEnd += position.getStart() + position.getNumberOfConsecutive() - 1;
     }
+
+    std::cout << "N posi reseni!" << std::endl;
 
 
     first = true;
     previousEnd = 0;
-    for(Location item : lowercasePosition) {
+    int c = 0;
+
+    for (Location item : lowercasePosition) {
         item.getOutput();
-        if(first) {
-            for (int i=0; i < item.getNumberOfConsecutive(); i++) {
-                finalTarget[item.getStart() + i] = tolower(finalTarget[item.getStart() + i]);
+        int consecutive = item.getNumberOfConsecutive();
+        int start = item.getStart() - 1;    
+
+        if (first) {
+            //std::cout << finalTarget.substr(start, consecutive) << std::endl;
+            for (int i = start + 1; i < consecutive + start + 1; i++) {
+                finalTarget[i] = tolower(finalTarget[i]);
             }
+            //std::cout << finalTarget.substr(start, consecutive) << std::endl;
+            
             first = false;
         } else {
-            for(int i = 0; i < item.getNumberOfConsecutive(); i++) {
-                finalTarget[item.getStart() + previousEnd + i] = tolower(finalTarget[item.getStart() + previousEnd + i]);
+            //std::cout << finalTarget.substr(start + previousEnd, consecutive) << std::endl;
+            for (int i = start + previousEnd + 1; i < consecutive + start + previousEnd + 1; i++) {
+                finalTarget[i] = tolower(finalTarget[i]);
             }
+            //std::cout << finalTarget.substr(start + previousEnd, consecutive) << std::endl;
         }
 
-        previousEnd = item.getStart() + previousEnd + item.getNumberOfConsecutive() - 1;
+        previousEnd += start + consecutive;
     }
+    
     return finalTarget;
 }
 
@@ -227,7 +252,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
     std::vector<Location> Npositions;
     for(int i = 0; i < lines.size(); i++) {
         std::string line = lines[i];
-        std::cout << "processing line: " << line << std::endl;
+        std::cout << "processing line: " << i << "/" << lines.size()<< std::endl;
 
         // skip lines 2, 3 and 4
         if (line[0] == '>') {
@@ -248,7 +273,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
                 
                 Location locLower(relativeStartL, consecutiveL);
                 lowercasePositions.push_back(locLower);
-                locLower.getOutput();
+                //locLower.getOutput();
                 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
@@ -261,7 +286,7 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
                 
                 Location Npos(relativeStartN, consecutiveN);
                 Npositions.push_back(Npos);
-                Npos.getOutput();
+                //Npos.getOutput();
 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
@@ -270,11 +295,12 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             if (line.find(",") != std::string::npos) {
                 begin = std::stoi(line.substr(0, line.find(",")));
                 length = std::stoi(line.substr(line.find(",") + 1, line.length() - line.find(",") - 1));
+                std::cout << "posovi" << std::endl;
                 std::cout << "Begin: " << begin << ", Length: " << length << std::endl;
                 std::cout << "Begin + end: " << begin + end << ", Length: " << length + 1 << std::endl;
                 target += referenceFile.substr(begin + end, length + 1);
 
-                std::cout << "adding: " << referenceFile.substr(begin + end, length + 1) << std::endl;
+                //std::cout << "adding: " << referenceFile.substr(begin + end, length + 1) << std::endl;
                 end += begin + length;
                 
             } else {
@@ -283,18 +309,24 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
         }
     }
 
-    std::cout << target << std::endl;
     std::string finalTarget = modifyCharacters(target, lowercasePositions, Npositions);
+    std::cout << "chars modified?" << std::endl;
+
+    std::string finalFinalTarget = "";
 
     for (int i = 0; i < finalTarget.length(); i++) {
-        if (i % (lineLength+1) == 0) {
-            finalTarget.insert(i, 1, '\n');
+        if (i % lineLength == 0) {
+            finalFinalTarget += "\n";
         }
+
+        finalFinalTarget += finalTarget[i];
     }
-    finalTarget.erase(0,1);
+    std::cout << "made finalfinal" << std::endl;
+
+    finalFinalTarget.erase(0,1);
 
     std::cout << "Target BP:\n" << target.length() << std::endl;
-    writeToFile(outputFile, finalTarget);
+    writeToFile(outputFile, finalFinalTarget);
 }
 
 int main( int argc, char **argv){
@@ -324,8 +356,21 @@ int main( int argc, char **argv){
 
     std::string output = "../data/resultsd/result.fa";
 
+    std::string finalReferenceSequence = "";
+    for (const char &c : referenceSequence) {
+        if (c != 'N') {
+            finalReferenceSequence += c;
+        }
+    }
+
+    for (char &c : finalReferenceSequence) {
+        if (c <= 'z' && c >= 'a') {
+            c += 'A' - 'a';
+        }
+    }
+
     clearFile(output);
-    reconstruct(output, compressedFile, referenceSequence);
+    reconstruct(output, compressedFile, finalReferenceSequence);
 
 	return 0;
 }

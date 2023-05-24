@@ -134,7 +134,7 @@ class Entry {
 void writeToFile(std::string filename, std::string text, bool newLine=true, bool debug=false) {
     std::ofstream file;
 
-
+    if (debug)
     std::cout << "Writing: '" << text << "' to file: " << filename << "." << std::endl;
     file.open(filename, std::ofstream::out|std::ofstream::app);
 
@@ -271,7 +271,7 @@ std::vector<Location> getPositions(const std::string &sequence, int type) {
             if (!islower(sequence[i])) {
                 if (successive) {
                     positions.push_back(pos);
-                    pos.getOutput();
+                    //pos.getOutput();
                     successive = false;
                 }
             } else if (!successive) {
@@ -280,7 +280,11 @@ std::vector<Location> getPositions(const std::string &sequence, int type) {
             } else {
                 pos.addConsecutive();
             }        
-        }       
+        }
+
+        if (successive) {
+            positions.push_back(pos);
+        }      
     }
 
 
@@ -299,6 +303,10 @@ std::vector<Location> getPositions(const std::string &sequence, int type) {
                 pos.addConsecutive();
             }        
         }
+
+        if (successive) {
+            positions.push_back(pos);
+        }      
     }
 
 
@@ -318,12 +326,11 @@ std::string formatPositionString(std::vector<Location> positions) {
     int previousEnd = 0;
     bool first = true;
     for (auto pos : positions) {
-        //last occurance of lowercase
         if (first) {
             targetPositions += std::to_string(pos.getStart()) + " " + std::to_string(pos.getNumberOfConsecutive()) + ";";
             first = false;
         } else {
-            std::cout << pos.getStart() << ", " << previousEnd << std::endl;
+            //std::cout << pos.getStart() << ", " << previousEnd << std::endl;
             targetPositions += std::to_string(pos.getStart() - previousEnd) + " " + std::to_string(pos.getNumberOfConsecutive()) + ";";
         }
         previousEnd = pos.getStart() + pos.getNumberOfConsecutive() - 1;
@@ -769,8 +776,15 @@ void constructFile(
     for (int i = 0; i < entries.size(); i++) {
         Entry e = entries[i];
 
-        if (i == 0 and e.getPosition() > 0) {
-            writeToFile(fileName, targetSequence.substr(0, e.getPosition()));
+        if (i == 0) {
+            if (e.getPosition() > 0)
+                writeToFile(fileName, targetSequence.substr(0, e.getPosition()));
+            
+            writeToFile(
+                fileName,
+                std::to_string((e.getPositionInReference() - delta)) + "," + std::to_string(e.getLength() - 1
+            )
+        );
         } else {
             delta = entries[i - 1].getLength() + entries[i - 1].getPositionInReference();
             int prevEndInTarget = entries[i - 1].getPosition() + entries[i - 1].getLength();
@@ -783,19 +797,19 @@ void constructFile(
                     e.getPosition() - prevEndInTarget 
                 )
             );
+
+            writeToFile(
+                fileName,
+                std::to_string((e.getPositionInReference() - delta + 1)) + "," + std::to_string(e.getLength() - 1)
+            );
         }
-        
-        writeToFile(
-            fileName,
-            std::to_string((e.getPositionInReference() - delta + 1)) + "," + std::to_string(e.getLength() - 1)
-        );
     }
 }
 
 
 #define t1 (0.5f)
 #define t2 (4)
-#define segmentSize (1000)
+#define segmentSize (60)
 #define k_merLength (21)
 
 int main(int argc, char **argv){
@@ -924,7 +938,7 @@ int main(int argc, char **argv){
         for (auto match : matches)
             foundMatches.push_back(match);
 
-        Entry lastMatch(1000,1000,0);
+        Entry lastMatch(0, 0, 0);
         for (int j = 0; j < matches.size(); j++) {
             Entry match = matches[j];
 
@@ -988,7 +1002,6 @@ int main(int argc, char **argv){
         std::string targetNposition = formatPositionString(tNPositions);
         std::cout << "target N postions:" << targetNposition << std::endl;
         writeToFile(intermFile, targetNposition);
-
 
         std::string finalTargetSequence = "";
         for (const char &c : targetSequence) {
