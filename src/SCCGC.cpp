@@ -808,7 +808,7 @@ void constructFile(
 
 #define t1 (0.5f)
 #define t2 (4)
-#define segmentSize (60)
+#define segmentSize (30000)
 #define k_merLength (21)
 
 int main(int argc, char **argv){
@@ -827,7 +827,6 @@ int main(int argc, char **argv){
 
     writeToFile(intermFile, getMetadataFromFile(argv[1]));
     writeToFile(intermFile, std::to_string(lineLength));
-
 
     const std::vector<Location> tLowercasePositions = getPositions(targetSequence, LOWERCASECHAR);
     std::string targetLposition = formatPositionString(tLowercasePositions);
