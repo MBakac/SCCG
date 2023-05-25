@@ -9,6 +9,9 @@
 #include <utility>
 #include <regex>
 #include <algorithm>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <chrono>
 
 #define ll long long
 
@@ -207,24 +210,19 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     int c = 0;
 
     for (Location item : lowercasePosition) {
-        item.getOutput();
         int consecutive = item.getNumberOfConsecutive();
         int start = item.getStart() - 1;    
 
         if (first) {
-            //std::cout << finalTarget.substr(start, consecutive) << std::endl;
             for (int i = start + 1; i < consecutive + start + 1; i++) {
                 finalTarget[i] = tolower(finalTarget[i]);
             }
-            //std::cout << finalTarget.substr(start, consecutive) << std::endl;
             
             first = false;
         } else {
-            //std::cout << finalTarget.substr(start + previousEnd, consecutive) << std::endl;
             for (int i = start + previousEnd + 1; i < consecutive + start + previousEnd + 1; i++) {
                 finalTarget[i] = tolower(finalTarget[i]);
             }
-            //std::cout << finalTarget.substr(start + previousEnd, consecutive) << std::endl;
         }
 
         previousEnd += start + consecutive;
@@ -233,7 +231,18 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     return finalTarget;
 }
 
-// u reconstruct koristeno https://www.techiedelight.com/split-a-string-on-newlines-in-cpp/
+/**
+ * Function reconstructs the target file from reference file and the compressed file 
+ * 
+ * Implemented solution from https://www.techiedelight.com/split-a-string-on-newlines-in-cpp/
+ * 
+ * @author Martin Bakač
+ * @author Marta Bonacin
+ * 
+ * @param outputFile output file name
+ * @param intermFile compressed file name
+ * @param referenceFile reference file
+ */  
 void reconstruct(std::string outputFile, const std::string& intermFile, std::string referenceFile) {
     std::vector<std::string> lines;
 
@@ -252,15 +261,11 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
     std::vector<Location> Npositions;
     for(int i = 0; i < lines.size(); i++) {
         std::string line = lines[i];
-        std::cout << "processing line: " << i << "/" << lines.size()<< std::endl;
 
         // skip lines 2, 3 and 4
         if (line[0] == '>') {
-            std::cout << line << std::endl;
             writeToFile(outputFile, line.substr(0, line.length()));
         } else if (line.empty()) {
-            std::cout << "line is empty" << std::endl;
-            //writeToFile(outputFile, "");
 
         } else if(i == 1) {
             lineLength = std::stoi(line);
@@ -286,7 +291,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
                 
                 Location Npos(relativeStartN, consecutiveN);
                 Npositions.push_back(Npos);
-                //Npos.getOutput();
 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }
@@ -295,12 +299,8 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
             if (line.find(",") != std::string::npos) {
                 begin = std::stoi(line.substr(0, line.find(",")));
                 length = std::stoi(line.substr(line.find(",") + 1, line.length() - line.find(",") - 1));
-                std::cout << "posovi" << std::endl;
-                std::cout << "Begin: " << begin << ", Length: " << length << std::endl;
-                std::cout << "Begin + end: " << begin + end << ", Length: " << length + 1 << std::endl;
                 target += referenceFile.substr(begin + end, length + 1);
 
-                //std::cout << "adding: " << referenceFile.substr(begin + end, length + 1) << std::endl;
                 end += begin + length;
                 
             } else {
@@ -310,7 +310,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
     }
 
     std::string finalTarget = modifyCharacters(target, lowercasePositions, Npositions);
-    std::cout << "chars modified?" << std::endl;
 
     std::string finalFinalTarget = "";
 
@@ -321,7 +320,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
 
         finalFinalTarget += finalTarget[i];
     }
-    std::cout << "made finalfinal" << std::endl;
 
     finalFinalTarget.erase(0,1);
 
@@ -334,26 +332,19 @@ int main( int argc, char **argv){
         std::cerr << "Missing argument." << std::endl;
         return -1;
     }
+
+    // timer
+    auto startTime = std::chrono::high_resolution_clock::now();
 	
     std::string referenceSequencePath = argv[1];
     std::string compressedFilePath = argv[2];
     std::string finalFolder = argv[3];
 
-
-    //TODO: changed for testing
     unzipFile(compressedFilePath, "../data/resultsd/decompressed");
     std::string filename("../data/resultsd/decompressed/intermediate.txt");
-    //std::string filename("../data/results/intermediate.txt");//delete
     std::string compressedFile = readFileIntoString(filename);
-	//std::cout << compressedFile << std::endl;
-
-    //filename(referenceSequencePath);
-
     
-    //std::string referenceFile = readFileIntoString(referenceSequencePath);
     std::string referenceSequence = getSequenceFromFile(argv[1]);
-    //referenceFile = referenceFile.substr(referenceFile.find("\n") - 2, referenceFile.length());
-
     std::string output = "../data/resultsd/result.fa";
 
     
@@ -369,10 +360,22 @@ int main( int argc, char **argv){
             finalReferenceSequence += c;
         }
     }
-
     
     clearFile(output);
     reconstruct(output, compressedFile, finalReferenceSequence);
+
+    // print time and memory consumption
+    std::cout << "Done decompressing." << std::endl;
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+    std::cout << "Deompression time: " << std::to_string(interval.count()) << " ms." << std::endl;
+
+    struct rusage memoryUsage;
+    getrusage(RUSAGE_SELF, &memoryUsage);
+
+    std::cout << "Memory used: " << std::to_string(memoryUsage.ru_maxrss) << " kilobytes." << std::endl;
 
 	return 0;
 }
