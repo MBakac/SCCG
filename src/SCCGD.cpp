@@ -178,19 +178,9 @@ std::string modifyCharacters(std::string target, std::vector<Location> lowercase
     for(Location position : Nposition) {
         //position.getOutput();
         if(first) {
-            /*
-            for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
-                finalTarget.insert(position.getStart() + i, 1, 'N');
-            }
-            */
             finalTarget.insert(position.getStart(), position.getNumberOfConsecutive(), 'N');
             first = false;
         } else {
-            /*
-            for(int i = 0; i < position.getNumberOfConsecutive(); i++) {
-                finalTarget.insert(position.getStart() + previousEnd + i, 1, 'N');
-            }
-            */
             if (position.getStart() + previousEnd > finalTarget.length()) {
                 std::string ns(position.getNumberOfConsecutive(), 'N'); 
                 finalTarget += ns;
@@ -278,7 +268,6 @@ void reconstruct(std::string outputFile, const std::string& intermFile, std::str
                 
                 Location locLower(relativeStartL, consecutiveL);
                 lowercasePositions.push_back(locLower);
-                //locLower.getOutput();
                 
                 line = line.substr(line.find(";") + 1, line.length() - line.find(";"));
             }

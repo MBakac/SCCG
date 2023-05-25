@@ -886,12 +886,7 @@ int main(int argc, char **argv){
     if (!global) {
         writeToFile(intermFile, "");
         constructFileLocal(intermFile, foundMatches);
-    } else {
-        auto endTime = std::chrono::high_resolution_clock::now();
-        auto interval = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-
-        std::cout << "To global time: " << std::to_string(interval.count()) << " ms." << std::endl;
-        
+    } else {        
         foundMatches.clear();
 
         const std::vector<Location> tNPositions = getPositions(targetSequence, NCHAR);
