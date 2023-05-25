@@ -356,6 +356,13 @@ int main( int argc, char **argv){
 
     std::string output = "../data/resultsd/result.fa";
 
+    
+    for (char &c : referenceSequence) {
+        if (c <= 'z' && c >= 'a') {
+            c += 'A' - 'a';
+        }
+    }
+
     std::string finalReferenceSequence = "";
     for (const char &c : referenceSequence) {
         if (c != 'N') {
@@ -363,12 +370,7 @@ int main( int argc, char **argv){
         }
     }
 
-    for (char &c : finalReferenceSequence) {
-        if (c <= 'z' && c >= 'a') {
-            c += 'A' - 'a';
-        }
-    }
-
+    
     clearFile(output);
     reconstruct(output, compressedFile, finalReferenceSequence);
 

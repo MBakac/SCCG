@@ -2871,7 +2871,7 @@ Open archive: ../data/results/intermediate.txt.7z
 --
 Path = ../data/results/intermediate.txt.7z
 Type = 7z
-Physical Size = 178
+Physical Size = 230124
 Headers Size = 138
 Method = PPMD
 Solid = -

@@ -17,7 +17,6 @@
 
 int lineLength = 0;
 
-
 /**
  * Represents location information for certain character types
  * 
@@ -994,9 +993,10 @@ int main(int argc, char **argv){
 
     if (!global) {
         writeToFile(intermFile, "");
-    }
-    
-    if (global) {
+        legacyConstructFile(intermFile, foundMatches);
+    } else {
+        foundMatches.clear();
+
         const std::vector<Location> tNPositions = getPositions(targetSequence, NCHAR);
 
         std::string targetNposition = formatPositionString(tNPositions);
@@ -1048,7 +1048,6 @@ int main(int argc, char **argv){
 
         constructFile(intermFile, matches, finalTargetSequence);
     }
-
 
     zipFile(intermFile);
 
